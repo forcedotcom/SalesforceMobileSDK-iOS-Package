@@ -10,9 +10,6 @@
 	],
 	"os" : [ "darwin" ],
 	"bin" : { "forceios" : "./forceios.js" },
-	"dependencies": {
-		"shelljs": ">=0.1.4"
-	},
 	"repository": {
 		"type" : "git",
 		"url" : "https://github.com/forcedotcom/SalesforceMobileSDK-iOS.git"

@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 
 var exec = require('child_process').exec,
-    path = require('path'),
-    shellJs = require('shelljs');
+    path = require('path');
+
+var outputColors = {
+    'red': '\x1b[31;1m',
+    'green': '\x1b[32;1m',
+    'yellow': '\x1b[33;1m',
+    'magenta': '\x1b[35;1m',
+    'cyan': '\x1b[36;1m',
+    'reset': '\x1b[0m'
+}
 
 var commandLineArgs = process.argv.slice(2, process.argv.length);
 var command = commandLineArgs.shift();
@@ -18,14 +26,14 @@ switch  (command) {
       createApp();
       break;
     default:
-      console.log('Unknown option: \'' + command + '\'.');
+      console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
       usage();
       process.exit(2);
 }
 
 function usage() {
-    console.log('Usage:');
-    console.log('forceios create');
+    console.log(outputColors.cyan + 'Usage:');
+    console.log(outputColors.magenta + 'forceios create');
     console.log('    -t <Application Type> (native, hybrid_remote, hybrid_local)');
     console.log('    -n <Application Name>');
     console.log('    -c <Company Identifier> (com.myCompany.myApp)');
@@ -33,7 +41,7 @@ function usage() {
     console.log('    [-o <Output directory> (defaults to the current working directory)');
     console.log('    [-a <Salesforce App Identifier>] (the Consumer Key for your app)');
     console.log('    [-u <Salesforce App Callback URL] (the Callback URL for your app)');
-    console.log('    [-s <App Start Page> (defaults to index.html for hybrid_local, and /apex/VFStartPage for hybrid_remote)');
+    console.log('    [-s <App Start Page> (defaults to index.html for hybrid_local, and /apex/VFStartPage for hybrid_remote)' + outputColors.reset);
 }
 
 function createApp() {
@@ -41,7 +49,7 @@ function createApp() {
     var appTypeIsNative;
     switch (appType) {
     	case null:
-    	    console.log('App type was not specified in command line arguments.');
+    	    console.log(outputColors.red + 'App type was not specified in command line arguments.' + outputColors.reset);
     	    usage();
     	    process.exit(3);
     	    break;
@@ -53,7 +61,7 @@ function createApp() {
     	    appTypeIsNative = false;
     	    break;
     	default:
-    	    console.log('Unrecognized app type: ' + appType);
+    	    console.log(outputColors.red + 'Unrecognized app type: ' + appType + outputColors.reset);
           usage();
     	    process.exit(4);
     }
@@ -67,7 +75,7 @@ function createApp() {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
         if (error !== null) {
-            console.log('There was an error creating the app.');
+            console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             process.exit(5);
         }
 
@@ -75,9 +83,9 @@ function createApp() {
         copyDependencies(appTypeIsNative, function(success, msg) {
             if (msg) console.log(msg);
             if (success) {
-                console.log('Congratulations!  You have successfully created your app.');
+                console.log(outputColors.green + 'Congratulations!  You have successfully created your app.' + outputColors.reset);
             } else {
-                console.log('There was an error creating the app.');
+                console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             }
         });
     });
@@ -99,12 +107,14 @@ function copyDependencies(isNative, callback) {
         dependencies.push(dependencyPackages.hybridsdk);
     }
 
+    // NB: Arguments would have already been verified at this point.
     var appName = getCommandLineArgValue('-n');
     var appDependenciesDir = getCommandLineArgValue('-o');
     if (!appDependenciesDir) appDependenciesDir = process.cwd();
     appDependenciesDir = path.resolve(appDependenciesDir);
     appDependenciesDir = path.join(appDependenciesDir, appName, appName, 'Dependencies');
 
+    console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
     copyDependenciesHelper(dependencies, appDependenciesDir, callback);
 }
 
@@ -116,22 +126,22 @@ function copyDependenciesHelper(dependencies, appDependenciesDir, callback) {
     var dependencyObj = dependencies.shift();
     if (dependencyObj.isArchive) {
         // Zip archive.  Uncompress to the app's dependencies directory.
+        console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.location) + ' to ' + appDependenciesDir + outputColors.reset);
         exec('unzip "' + dependencyObj.location + '" -d "' + appDependenciesDir + '"', function(error, stdout, stderr) {
-            if (stdout) console.log(stdout);
-            if (stderr) console.log(stderr);
             if (error) {
-                return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\'.');
+                return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\': ' + error);
             }
             copyDependenciesHelper(dependencies, appDependenciesDir, callback);
         });
     } else {
         // Simple folder.  Copy to the app's dependencies directory.
-        console.log('Copying \'' + dependencyObj.location + '\'.');
-        shellJs.cp('-R', dependencyObj.location, appDependenciesDir);
-        if (shellJs.error()) {
-            return callback(false, 'Error copying directory \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\': ' + shellJs.error());
-        }
-        copyDependenciesHelper(dependencies, appDependenciesDir, callback);
+        console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.location) + ' to ' + appDependenciesDir + outputColors.reset);
+        exec('cp -R "' + dependencyObj.location + '" "' + appDependenciesDir + '"', function(error, stdout, stderr) {
+            if (error) {
+                return callback(false, 'Error copying directory \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\': ' + error);
+            }
+            copyDependenciesHelper(dependencies, appDependenciesDir, callback);
+        });
     }
 }
 
