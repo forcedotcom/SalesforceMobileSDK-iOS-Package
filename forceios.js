@@ -12,14 +12,18 @@ var outputColors = {
     'reset': '\x1b[0m'
 }
 
+var dependencyType = {
+    'FILE': 0,
+    'DIR': 1,
+    'ARCHIVE': 2
+}
+
 var commandLineArgs = process.argv.slice(2, process.argv.length);
 var command = commandLineArgs.shift();
 if (typeof command !== 'string') {
     usage();
     process.exit(1);
 }
-
-var dependencyPackages = createDependencyPackageMap();
 
 switch  (command) {
     case 'create':
@@ -74,17 +78,18 @@ function createApp() {
     var createAppProcess = exec(createAppExecutable + ' ' + commandLineArgs.join(' '), function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
-        if (error !== null) {
+        if (error) {
             console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             process.exit(5);
         }
 
         // Copy dependencies
         copyDependencies(appTypeIsNative, function(success, msg) {
-            if (msg) console.log(msg);
             if (success) {
+                if (msg) console.log(outputColors.green + msg + outputColors.reset);
                 console.log(outputColors.green + 'Congratulations!  You have successfully created your app.' + outputColors.reset);
             } else {
+                if (msg) console.log(outputColors.red + msg + outputColors.reset);
                 console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             }
         });
@@ -92,7 +97,10 @@ function createApp() {
 }
 
 function copyDependencies(isNative, callback) {
+    var outputDirMap = createOutputDirectoriesMap();
+    var dependencyPackages = createDependencyPackageMap(outputDirMap);
     var dependencies = [
+        dependencyPackages.sdkresources,
         dependencyPackages.commonutils,
         dependencyPackages.oauth,
         dependencyPackages.sdkcore,
@@ -103,45 +111,59 @@ function copyDependencies(isNative, callback) {
         dependencies.push(dependencyPackages.restkit);
         dependencies.push(dependencyPackages.nativesdk);
     } else {
-        dependencies.push(dependencyPackages.cordova);
+        dependencies.push(dependencyPackages.cordovaBin);
+        dependencies.push(dependencyPackages.cordovaConfig);
+        dependencies.push(dependencyPackages.cordovaJs);
+        dependencies.push(dependencyPackages.cordovaCaptureBundle);
+        dependencies.push(dependencyPackages.hybridForcePlugins);
+        dependencies.push(dependencyPackages.hybridForceTk);
+        dependencies.push(dependencyPackages.hybridSampleAppHtml);
+        dependencies.push(dependencyPackages.hybridSampleAppJs);
+        dependencies.push(dependencyPackages.jquery);
         dependencies.push(dependencyPackages.hybridsdk);
     }
 
-    // NB: Arguments would have already been verified at this point.
-    var appName = getCommandLineArgValue('-n');
-    var appDependenciesDir = getCommandLineArgValue('-o');
-    if (!appDependenciesDir) appDependenciesDir = process.cwd();
-    appDependenciesDir = path.resolve(appDependenciesDir);
-    appDependenciesDir = path.join(appDependenciesDir, appName, appName, 'Dependencies');
-
     console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
-    copyDependenciesHelper(dependencies, appDependenciesDir, callback);
+    copyDependenciesHelper(dependencies, callback);
 }
 
-function copyDependenciesHelper(dependencies, appDependenciesDir, callback) {
+function copyDependenciesHelper(dependencies, callback) {
     if (dependencies.length === 0) {
         return callback(true, null);
     }
 
     var dependencyObj = dependencies.shift();
-    if (dependencyObj.isArchive) {
-        // Zip archive.  Uncompress to the app's dependencies directory.
-        console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.location) + ' to ' + appDependenciesDir + outputColors.reset);
-        exec('unzip "' + dependencyObj.location + '" -d "' + appDependenciesDir + '"', function(error, stdout, stderr) {
-            if (error) {
-                return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\': ' + error);
-            }
-            copyDependenciesHelper(dependencies, appDependenciesDir, callback);
-        });
-    } else {
-        // Simple folder.  Copy to the app's dependencies directory.
-        console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.location) + ' to ' + appDependenciesDir + outputColors.reset);
-        exec('cp -R "' + dependencyObj.location + '" "' + appDependenciesDir + '"', function(error, stdout, stderr) {
-            if (error) {
-                return callback(false, 'Error copying directory \'' + dependencyObj.location + '\' to \'' + appDependenciesDir + '\': ' + error);
-            }
-            copyDependenciesHelper(dependencies, appDependenciesDir, callback);
-        });
+    switch (dependencyObj.dependencyType) {
+        case dependencyType.ARCHIVE:
+            // Zip archive.  Uncompress to the app's dependencies directory.
+            console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
+            exec('unzip "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+                if (error) {
+                    return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                }
+                copyDependenciesHelper(dependencies, callback);
+            });
+            break;
+        case dependencyType.DIR:
+            // Simple folder.  Recursive copy to the app's dependencies directory.
+            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
+            exec('cp -R "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+                if (error) {
+                    return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                }
+                copyDependenciesHelper(dependencies, callback);
+            });
+            break;
+        case dependencyType.FILE:
+            // Simple file(s).  Copy to the app's dependencies directory.
+            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
+            exec('cp "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+                if (error) {
+                    return callback(false, 'Error copying file(s) \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                }
+                copyDependenciesHelper(dependencies, callback);
+            });
+            break;
     }
 }
 
@@ -155,21 +177,46 @@ function getCommandLineArgValue(argName) {
     return null;
 }
 
-function createDependencyPackageMap() {
+function createOutputDirectoriesMap() {
+    var outputDirMap = {};
+
+    // NB: Arguments should have already been verified at this point.
+    var appName = getCommandLineArgValue('-n');
+    var outputDir = getCommandLineArgValue('-o');
+    if (!outputDir) outputDir = process.cwd();
+    outputDir = path.resolve(outputDir);
+    outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
+    outputDirMap.appDependenciesDir = path.join(outputDirMap.appBaseContentDir, 'Dependencies');
+    outputDirMap.hybridAppWwwDir = path.join(outputDirMap.appBaseContentDir, 'www');
+
+    return outputDirMap;
+}
+
+function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
-    packageMap.cordova = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova-Release.zip'), true);
-    packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), true);
-    packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), true);
-    packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), true);
-    packageMap.sdkcore = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'), true);
-    packageMap.restkit = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'RestKit'), false);
-    packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), false);
-    packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), false);
-    packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), false);
+
+    packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
+    packageMap.cordovaBin = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.cordovaConfig = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'config.xml'), outputDirMap.appBaseContentDir, dependencyType.FILE);
+    packageMap.cordovaJs = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'cordova-2.3.0.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.cordovaCaptureBundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Capture.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
+    packageMap.hybridForcePlugins = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'cordova.force.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridForceTk = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'forcetk.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+    packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.sdkcore = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.restkit = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'RestKit'), outputDirMap.appDependenciesDir, dependencyType.DIR);
+    packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
+    packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
+    packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
 
     return packageMap;
 }
 
-function makePackageObj(path, isArchive) {
-    return { 'location': path, 'isArchive': isArchive };
+function makePackageObj(srcPath, destPath, dependencyType) {
+    return { 'srcPath': srcPath, 'destPath': destPath, 'dependencyType': dependencyType };
 }
