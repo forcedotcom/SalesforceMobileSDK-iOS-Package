@@ -75,7 +75,9 @@ function createApp() {
                                   path.join(__dirname, 'Templates', 'HybridAppTemplate', 'createApp.sh')
                               );
     
-    var createAppProcess = exec(createAppExecutable + ' ' + commandLineArgs.join(' '), function(error, stdout, stderr) {
+    // Calling out to the shell, so re-quote the command line arguments.
+    var quotedArgs = quoteArgs(commandLineArgs);
+    var createAppProcess = exec(createAppExecutable + ' ' + quotedArgs.join(' '), function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
         if (error) {
@@ -175,6 +177,14 @@ function getCommandLineArgValue(argName) {
     }
 
     return null;
+}
+
+function quoteArgs(argArray) {
+    var quotedArgsArray = [];
+    argArray.forEach(function(arg) {
+        quotedArgsArray.push('"' + arg + '"');
+    });
+    return quotedArgsArray;
 }
 
 function createOutputDirectoriesMap() {
