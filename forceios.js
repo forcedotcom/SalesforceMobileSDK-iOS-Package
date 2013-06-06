@@ -44,18 +44,17 @@ commandLineUtils.processArgsInteractive(commandLineArgs, argProcessorList, funct
 function usage() {
     console.log(outputColors.cyan + 'Usage:');
     console.log(outputColors.magenta + 'forceios create');
-    console.log('    -t <Application Type> (native, hybrid_remote, hybrid_local)');
-    console.log('    -n <Application Name>');
-    console.log('    -c <Company Identifier> (com.myCompany.myApp)');
-    console.log('    -g <Organization Name> (your company\'s/organization\'s name)');
-    console.log('    [-o <Output directory> (defaults to the current working directory)');
-    console.log('    [-a <Salesforce App Identifier>] (the Consumer Key for your app)');
-    console.log('    [-u <Salesforce App Callback URL] (the Callback URL for your app)');
-    console.log('    [-s <App Start Page> (defaults to index.html for hybrid_local, and /apex/VFStartPage for hybrid_remote)' + outputColors.reset);
+    console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
+    console.log('    --appname=<Application Name>');
+    console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
+    console.log('    --organization=<Organization Name> (Your company\'s/organization\'s name)');
+    console.log('    --apexpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
+    console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
+    console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
+    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]' + outputColors.reset);
 }
 
 function createApp() {
-    // var appType = getCommandLineArgValue('-t');
     var appType = commandLineArgsMap.apptype;
     var appTypeIsNative;
     switch (appType) {
@@ -85,7 +84,6 @@ function createApp() {
     // Calling out to the shell, so re-quote the command line arguments.
     // var quotedArgs = quoteArgs(commandLineArgs);
     var newCommandLineArgs = buildArgsFromArgMap();
-    // var createAppProcess = exec(createAppExecutable + ' ' + quotedArgs.join(' '), function(error, stdout, stderr) {
     var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
@@ -196,16 +194,6 @@ function copyDependenciesHelper(dependencies, callback) {
     }
 }
 
-function getCommandLineArgValue(argName) {
-    for (var i = 0; i < commandLineArgs.length - 1; i += 2) {
-        if (commandLineArgs[i] === argName) {
-            return commandLineArgs[i + 1];
-        }
-    }
-
-    return null;
-}
-
 function quoteArgs(argArray) {
     var quotedArgsArray = [];
     argArray.forEach(function(arg) {
@@ -218,9 +206,7 @@ function createOutputDirectoriesMap() {
     var outputDirMap = {};
 
     // NB: Arguments should have already been verified at this point.
-    // var appName = getCommandLineArgValue('-n');
     var appName = commandLineArgsMap.appname;
-    // var outputDir = getCommandLineArgValue('-o');
     var outputDir = commandLineArgsMap.outputdir;
     if (!outputDir) outputDir = process.cwd();
     outputDir = path.resolve(outputDir);
@@ -329,17 +315,24 @@ function createArgProcessorList() {
     });
 
     // Apex start page
-    argProcessorList.addArgProcessor('apexpage', 'Enter the Apex page for your app (only applicable for hybrid_remote apps):', function(apexPage, argsMap) {
-        if (argsMap && argsMap.apptype === 'hybrid_remote') {
-            if (apexPage.trim() === '')
-                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
+    argProcessorList.addArgProcessor(
+        'apexpage',
+        'Enter the Apex page for your app (only applicable for hybrid_remote apps):',
+        function(apexPage, argsMap) {
+            if (argsMap && argsMap.apptype === 'hybrid_remote') {
+                if (apexPage.trim() === '')
+                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
 
-            return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
+                return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
+            }
+
+            // Unset any value here, as it doesn't apply for non-remote apps.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        },
+        function (argsMap) {
+            return (argsMap['apptype'] === 'hybrid_remote');
         }
-
-        // Unset any value here, as it doesn't apply for non-remote apps.
-        return new commandLineUtils.ArgProcessorOutput(true, undefined);
-    });
+    );
 
     return argProcessorList;
 }
