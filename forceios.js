@@ -82,7 +82,6 @@ function createApp() {
                               );
     
     // Calling out to the shell, so re-quote the command line arguments.
-    // var quotedArgs = quoteArgs(commandLineArgs);
     var newCommandLineArgs = buildArgsFromArgMap();
     var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
@@ -192,14 +191,6 @@ function copyDependenciesHelper(dependencies, callback) {
             });
             break;
     }
-}
-
-function quoteArgs(argArray) {
-    var quotedArgsArray = [];
-    argArray.forEach(function(arg) {
-        quotedArgsArray.push('"' + arg + '"');
-    });
-    return quotedArgsArray;
 }
 
 function createOutputDirectoriesMap() {
