@@ -287,6 +287,26 @@ function createArgProcessorList() {
         return new commandLineUtils.ArgProcessorOutput(true, org.trim());
     });
 
+    // Apex start page
+    argProcessorList.addArgProcessor(
+        'apexpage',
+        'Enter the Apex page for your app (only applicable for hybrid_remote apps):',
+        function(apexPage, argsMap) {
+            if (argsMap && argsMap.apptype === 'hybrid_remote') {
+                if (apexPage.trim() === '')
+                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
+
+                return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
+            }
+
+            // Unset any value here, as it doesn't apply for non-remote apps.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        },
+        function (argsMap) {
+            return (argsMap['apptype'] === 'hybrid_remote');
+        }
+    );
+
     // Output dir
     argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for your app (defaults to the current directory):', function(outputDir) {
         if (outputDir.trim() === '')
@@ -313,26 +333,6 @@ function createArgProcessorList() {
         
         return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
     });
-
-    // Apex start page
-    argProcessorList.addArgProcessor(
-        'apexpage',
-        'Enter the Apex page for your app (only applicable for hybrid_remote apps):',
-        function(apexPage, argsMap) {
-            if (argsMap && argsMap.apptype === 'hybrid_remote') {
-                if (apexPage.trim() === '')
-                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
-
-                return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
-            }
-
-            // Unset any value here, as it doesn't apply for non-remote apps.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        },
-        function (argsMap) {
-            return (argsMap['apptype'] === 'hybrid_remote');
-        }
-    );
 
     return argProcessorList;
 }
