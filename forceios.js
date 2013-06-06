@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 var exec = require('child_process').exec,
-    path = require('path');
+    path = require('path'),
+    commandLineUtils = require('./HybridShared/node/commandLineUtils');
 
 var outputColors = {
     'red': '\x1b[31;1m',
@@ -25,34 +26,39 @@ if (typeof command !== 'string') {
     process.exit(1);
 }
 
-switch  (command) {
-    case 'create':
-      createApp();
-      break;
-    default:
-      console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
-      usage();
-      process.exit(2);
-}
+var argProcessorList = createArgProcessorList();
+var commandLineArgsMap;
+commandLineUtils.processArgsInteractive(commandLineArgs, argProcessorList, function (outputArgsMap) {
+    commandLineArgsMap = outputArgsMap;
+    switch  (command) {
+        case 'create':
+            createApp();
+            break;
+        default:
+            console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
+            usage();
+            process.exit(2);
+    }
+});
 
 function usage() {
     console.log(outputColors.cyan + 'Usage:');
     console.log(outputColors.magenta + 'forceios create');
-    console.log('    -t <Application Type> (native, hybrid_remote, hybrid_local)');
-    console.log('    -n <Application Name>');
-    console.log('    -c <Company Identifier> (com.myCompany.myApp)');
-    console.log('    -g <Organization Name> (your company\'s/organization\'s name)');
-    console.log('    [-o <Output directory> (defaults to the current working directory)');
-    console.log('    [-a <Salesforce App Identifier>] (the Consumer Key for your app)');
-    console.log('    [-u <Salesforce App Callback URL] (the Callback URL for your app)');
-    console.log('    [-s <App Start Page> (defaults to index.html for hybrid_local, and /apex/VFStartPage for hybrid_remote)' + outputColors.reset);
+    console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
+    console.log('    --appname=<Application Name>');
+    console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
+    console.log('    --organization=<Organization Name> (Your company\'s/organization\'s name)');
+    console.log('    --apexpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
+    console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
+    console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
+    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]' + outputColors.reset);
 }
 
 function createApp() {
-    var appType = getCommandLineArgValue('-t');
+    var appType = commandLineArgsMap.apptype;
     var appTypeIsNative;
     switch (appType) {
-    	case null:
+    	case undefined:
     	    console.log(outputColors.red + 'App type was not specified in command line arguments.' + outputColors.reset);
     	    usage();
     	    process.exit(3);
@@ -66,7 +72,7 @@ function createApp() {
     	    break;
     	default:
     	    console.log(outputColors.red + 'Unrecognized app type: ' + appType + outputColors.reset);
-          usage();
+            usage();
     	    process.exit(4);
     }
 
@@ -76,8 +82,8 @@ function createApp() {
                               );
     
     // Calling out to the shell, so re-quote the command line arguments.
-    var quotedArgs = quoteArgs(commandLineArgs);
-    var createAppProcess = exec(createAppExecutable + ' ' + quotedArgs.join(' '), function(error, stdout, stderr) {
+    var newCommandLineArgs = buildArgsFromArgMap();
+    var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
         if (error) {
@@ -96,6 +102,24 @@ function createApp() {
             }
         });
     });
+}
+
+function buildArgsFromArgMap() {
+    var argLine = '';
+    argLine += ' -t "' + commandLineArgsMap.apptype + '"';
+    argLine += ' -n "' + commandLineArgsMap.appname + '"';
+    argLine += ' -c "' + commandLineArgsMap.companyid + '"';
+    argLine += ' -g "' + commandLineArgsMap.organization + '"';
+    if (commandLineArgsMap.outputdir)
+        argLine += ' -o "' + commandLineArgsMap.outputdir + '"';
+    if (commandLineArgsMap.appid)
+        argLine += ' -a "' + commandLineArgsMap.appid + '"';
+    if (commandLineArgsMap.callbackuri)
+        argLine += ' -u "' + commandLineArgsMap.callbackuri + '"';
+    if (commandLineArgsMap.apexpage)
+        argLine += ' -s "' + commandLineArgsMap.apexpage + '"';
+
+    return argLine;
 }
 
 function copyDependencies(isNative, callback) {
@@ -169,30 +193,12 @@ function copyDependenciesHelper(dependencies, callback) {
     }
 }
 
-function getCommandLineArgValue(argName) {
-    for (var i = 0; i < commandLineArgs.length - 1; i += 2) {
-        if (commandLineArgs[i] === argName) {
-            return commandLineArgs[i + 1];
-        }
-    }
-
-    return null;
-}
-
-function quoteArgs(argArray) {
-    var quotedArgsArray = [];
-    argArray.forEach(function(arg) {
-        quotedArgsArray.push('"' + arg + '"');
-    });
-    return quotedArgsArray;
-}
-
 function createOutputDirectoriesMap() {
     var outputDirMap = {};
 
     // NB: Arguments should have already been verified at this point.
-    var appName = getCommandLineArgValue('-n');
-    var outputDir = getCommandLineArgValue('-o');
+    var appName = commandLineArgsMap.appname;
+    var outputDir = commandLineArgsMap.outputdir;
     if (!outputDir) outputDir = process.cwd();
     outputDir = path.resolve(outputDir);
     outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
@@ -229,4 +235,95 @@ function createDependencyPackageMap(outputDirMap) {
 
 function makePackageObj(srcPath, destPath, dependencyType) {
     return { 'srcPath': srcPath, 'destPath': destPath, 'dependencyType': dependencyType };
+}
+
+// -----
+// Input argument validation / processing.
+// -----
+
+function createArgProcessorList() {
+    var argProcessorList = new commandLineUtils.ArgProcessorList();
+
+    // App type
+    argProcessorList.addArgProcessor('apptype', 'Enter your application type (native, hybrid_remote, or hybrid_local):', function(appType) {
+        appType = appType.trim();
+        if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local')
+            return new commandLineUtils.ArgProcessorOutput(false, 'App type must be native, hybrid_remote, or hybrid_local.');
+
+        return new commandLineUtils.ArgProcessorOutput(true, appType);
+    });
+
+    // App name
+    argProcessorList.addArgProcessor('appname', 'Enter your application name:', function(appName) {
+        if (appName.trim() === '')
+            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for app name: \'' + appName + '\'');
+        
+        return new commandLineUtils.ArgProcessorOutput(true, appName.trim());
+    });
+
+    // Company Identifier
+    argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
+        if (companyId.trim() === '')
+            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
+        
+        // TODO: Update the company ID format as necessary.
+        return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
+    });
+
+    // Organization
+    argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
+        if (org.trim() === '')
+            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
+        
+        return new commandLineUtils.ArgProcessorOutput(true, org.trim());
+    });
+
+    // Apex start page
+    argProcessorList.addArgProcessor(
+        'apexpage',
+        'Enter the Apex page for your app (only applicable for hybrid_remote apps):',
+        function(apexPage, argsMap) {
+            if (argsMap && argsMap.apptype === 'hybrid_remote') {
+                if (apexPage.trim() === '')
+                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
+
+                return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
+            }
+
+            // Unset any value here, as it doesn't apply for non-remote apps.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        },
+        function (argsMap) {
+            return (argsMap['apptype'] === 'hybrid_remote');
+        }
+    );
+
+    // Output dir
+    argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for your app (defaults to the current directory):', function(outputDir) {
+        if (outputDir.trim() === '')
+            // Just unset the value.  The underlying script will take care of the default.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        
+        return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
+    });
+
+    // Connected App ID
+    argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
+        if (appId.trim() === '')
+            // Just unset the value.  The underlying script will take care of the default.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        
+        return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
+    });
+
+    // Connected App Callback URI
+    argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
+        if (callbackUri.trim() === '')
+            // Just unset the value.  The underlying script will take care of the default.
+            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+        
+        return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
+    });
+
+    return argProcessorList;
 }
