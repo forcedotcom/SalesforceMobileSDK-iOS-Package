@@ -56,27 +56,13 @@ function usage() {
 
 function createApp() {
     var appType = commandLineArgsMap.apptype;
-    var appTypeIsNative;
-    switch (appType) {
-    	case undefined:
-    	    console.log(outputColors.red + 'App type was not specified in command line arguments.' + outputColors.reset);
-    	    usage();
-    	    process.exit(3);
-    	    break;
-    	case 'native':
-    	    appTypeIsNative = true;
-    	    break;
-    	case 'hybrid_remote':
-    	case 'hybrid_local':
-    	    appTypeIsNative = false;
-    	    break;
-    	default:
-    	    console.log(outputColors.red + 'Unrecognized app type: ' + appType + outputColors.reset);
-            usage();
-    	    process.exit(4);
+    if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local') {
+        console.log(outputColors.red + 'Unrecognized app type: \'' + appType + '\'.' + outputColors.reset + 'App type must be native, hybrid_remote, or hybrid_local.');
+        usage();
+        process.exit(4);
     }
 
-    var createAppExecutable = (appTypeIsNative ? 
+    var createAppExecutable = (appType === 'native' ? 
                                   path.join(__dirname, 'Templates', 'NativeAppTemplate', 'createApp.sh') :
                                   path.join(__dirname, 'Templates', 'HybridAppTemplate', 'createApp.sh')
                               );
@@ -92,7 +78,7 @@ function createApp() {
         }
 
         // Copy dependencies
-        copyDependencies(appTypeIsNative, function(success, msg) {
+        copyDependencies(appType, function(success, msg) {
             if (success) {
                 if (msg) console.log(outputColors.green + msg + outputColors.reset);
                 console.log(outputColors.green + 'Congratulations!  You have successfully created your app.' + outputColors.reset);
@@ -122,7 +108,7 @@ function buildArgsFromArgMap() {
     return argLine;
 }
 
-function copyDependencies(isNative, callback) {
+function copyDependencies(appType, callback) {
     var outputDirMap = createOutputDirectoriesMap();
     var dependencyPackages = createDependencyPackageMap(outputDirMap);
     var dependencies = [
@@ -133,20 +119,26 @@ function copyDependencies(isNative, callback) {
         dependencyPackages.openssl,
         dependencyPackages.sqlcipher
     ];
-    if (isNative) {
-        dependencies.push(dependencyPackages.restkit);
-        dependencies.push(dependencyPackages.nativesdk);
-    } else {
-        dependencies.push(dependencyPackages.cordovaBin);
-        dependencies.push(dependencyPackages.cordovaConfig);
-        dependencies.push(dependencyPackages.cordovaJs);
-        dependencies.push(dependencyPackages.cordovaCaptureBundle);
-        dependencies.push(dependencyPackages.hybridForcePlugins);
-        dependencies.push(dependencyPackages.hybridForceTk);
-        dependencies.push(dependencyPackages.hybridSampleAppHtml);
-        dependencies.push(dependencyPackages.hybridSampleAppJs);
-        dependencies.push(dependencyPackages.jquery);
-        dependencies.push(dependencyPackages.hybridsdk);
+    switch (appType) {
+        case 'native':
+            dependencies.push(dependencyPackages.restkit);
+            dependencies.push(dependencyPackages.nativesdk);
+            break;
+        case 'hybrid_local':
+            dependencies.push(dependencyPackages.cordovaJs);
+            dependencies.push(dependencyPackages.hybridForcePlugins);
+            dependencies.push(dependencyPackages.hybridForceTk);
+            dependencies.push(dependencyPackages.hybridForceEntity);
+            dependencies.push(dependencyPackages.hybridSampleAppHtml);
+            dependencies.push(dependencyPackages.hybridSampleAppJs);
+            dependencies.push(dependencyPackages.jquery);
+            dependencies.push(dependencyPackages.backbone);
+        case 'hybrid_remote':
+            dependencies.push(dependencyPackages.cordovaBin);
+            dependencies.push(dependencyPackages.cordovaConfig);
+            dependencies.push(dependencyPackages.cordovaCaptureBundle);
+            dependencies.push(dependencyPackages.hybridsdk);
+            break;
     }
 
     console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
@@ -217,8 +209,10 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.cordovaJs = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'cordova-2.3.0.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.cordovaCaptureBundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Capture.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.hybridForcePlugins = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'cordova.force.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridForceTk = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'forcetk.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridForceTk = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'forcetk.mobilesdk.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridForceEntity = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'force.entity.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+    packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
