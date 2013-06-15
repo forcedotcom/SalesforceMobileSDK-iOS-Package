@@ -56,13 +56,13 @@ Once the creation script completes, you'll have a fully functioning "sample" app
 
 **Organization:** The name of your company or organziation.  For example, `Acme Widgets, Inc.`.
 
-**Apex Page:** (*Required for **hybrid\_remote** apps only*) The "starting page" of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
+**Apex Page:** \(*Required for **hybrid\_remote** apps only*\) The "starting page" of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
 
-**Output Directory:** (*optional*) The directory where you want your app to be created.  If not specified, it will be created in your current working directory.
+**Output Directory:** \(*optional*\) The directory where you want your app to be created.  If not specified, it will be created in your current working directory.
 
-**App ID:** (*optional*) The Connected App Consumer Key that identifies your app in the cloud.  This will default to a sample key that will allow you to test your app.  However, you *must* specify your own Consumer Key before you submit your app to the App Store.
+**App ID:** \(*optional*\) The Connected App Consumer Key that identifies your app in the cloud.  This will default to a sample key that will allow you to test your app.  However, you *must* specify your own Consumer Key before you submit your app to the App Store.
 
-**Callback URI:** (*optional*) The Callback URL associated with your Connected App.  As with the App ID, this will default to a value for a sample app, but you *must* specify your own Callback URL before you submit your app to the App Store.
+**Callback URI:** \(*optional*\) The Callback URL associated with your Connected App.  As with the App ID, this will default to a value for a sample app, but you *must* specify your own Callback URL before you submit your app to the App Store.
 
 ## More information
 
