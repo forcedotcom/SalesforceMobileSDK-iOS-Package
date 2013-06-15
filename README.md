@@ -56,7 +56,7 @@ Once the creation script completes, you'll have a fully functioning "sample" app
 
 **Organization:** The name of your company or organziation.  For example, `Acme Widgets, Inc.`.
 
-**Apex Page:** \( *Required for **hybrid\_remote** apps only* \) The "starting page" of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
+**Apex Page:** \( *Required for hybrid\_remote apps only* \) The "starting page" of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
 
 **Output Directory:** \( *optional* \) The directory where you want your app to be created.  If not specified, it will be created in your current working directory.
 
