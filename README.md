@@ -1,5 +1,7 @@
 # Salesforce Mobile SDK Packages
 
+### Coming soon!
+
 This repository contains various installation packages associated with the Salesforce Mobile SDK.
 
 - The Salesforce Mobile SDK for Android source repository lives [here](https://github.com/forcedotcom/SalesforceMobileSDK-Android).
