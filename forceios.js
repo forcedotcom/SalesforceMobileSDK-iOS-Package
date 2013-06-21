@@ -48,7 +48,7 @@ function usage() {
     console.log('    --appname=<Application Name>');
     console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
     console.log('    --organization=<Organization Name> (Your company\'s/organization\'s name)');
-    console.log('    --apexpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
+    console.log('    --startpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
     console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
     console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
     console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]' + outputColors.reset);
@@ -102,8 +102,8 @@ function buildArgsFromArgMap() {
         argLine += ' -a "' + commandLineArgsMap.appid + '"';
     if (commandLineArgsMap.callbackuri)
         argLine += ' -u "' + commandLineArgsMap.callbackuri + '"';
-    if (commandLineArgsMap.apexpage)
-        argLine += ' -s "' + commandLineArgsMap.apexpage + '"';
+    if (commandLineArgsMap.startpage)
+        argLine += ' -s "' + commandLineArgsMap.startpage + '"';
 
     return argLine;
 }
@@ -272,16 +272,16 @@ function createArgProcessorList() {
         return new commandLineUtils.ArgProcessorOutput(true, org.trim());
     });
 
-    // Apex start page
+    // Start page
     argProcessorList.addArgProcessor(
-        'apexpage',
-        'Enter the Apex page for your app (only applicable for hybrid_remote apps):',
-        function(apexPage, argsMap) {
+        'startpage',
+        'Enter the start page for your app (only applicable for hybrid_remote apps):',
+        function(startPage, argsMap) {
             if (argsMap && argsMap.apptype === 'hybrid_remote') {
-                if (apexPage.trim() === '')
-                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for Apex page: \'' + apexPage + '\'');
+                if (startPage.trim() === '')
+                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
 
-                return new commandLineUtils.ArgProcessorOutput(true, apexPage.trim());
+                return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
             }
 
             // Unset any value here, as it doesn't apply for non-remote apps.
