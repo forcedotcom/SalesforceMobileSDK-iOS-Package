@@ -33,7 +33,7 @@ Typing `forceios` with no arguments gives you a breakdown of the usage:
             --appname=<Application Name>
             --companyid=<Company Identifier> (com.myCompany.myApp)
             --organization=<Organization Name> (Your company's/organization's name)
-            --apexpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)
+            --startpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)
             [--outputdir=<Output directory> (Defaults to the current working directory)]
             [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]
             [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]
@@ -56,7 +56,7 @@ Once the creation script completes, you'll have a fully functioning basic applic
 
 **Organization:** The name of your company or organization.  For example, `Acme Widgets, Inc.`
 
-**Apex Page:** \( *Required for hybrid\_remote apps only* \) The starting page of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
+**Start Page:** \( *Required for hybrid\_remote apps only* \) The starting page of your application on salesforce.com.  This is the entry point of your remote application, though it's only the path, not the server portion of the URL.  For instance, `/apex/MyVisualforceStartPage`.
 
 **Output Directory:** \( *optional* \) The directory where you want your app to be created.  If not specified, it will be created in your current working directory.
 
