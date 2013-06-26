@@ -128,7 +128,7 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.cordovaJs);
             dependencies.push(dependencyPackages.hybridForcePlugins);
             dependencies.push(dependencyPackages.hybridForceTk);
-            dependencies.push(dependencyPackages.hybridForceEntity);
+            dependencies.push(dependencyPackages.hybridSmartSync);
             dependencies.push(dependencyPackages.hybridSampleAppHtml);
             dependencies.push(dependencyPackages.hybridSampleAppJs);
             dependencies.push(dependencyPackages.jquery);
@@ -210,7 +210,7 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.cordovaCaptureBundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Capture.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.hybridForcePlugins = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'cordova.force.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.hybridForceTk = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'forcetk.mobilesdk.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridForceEntity = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'force.entity.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    packageMap.hybridSmartSync = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'smartsync.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
