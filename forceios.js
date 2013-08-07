@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '2.0.0',
+var version = '2.1.0',
     exec = require('child_process').exec,
     path = require('path'),
     commandLineUtils = require('./HybridShared/node/commandLineUtils');
