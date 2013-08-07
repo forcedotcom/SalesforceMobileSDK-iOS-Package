@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-var exec = require('child_process').exec,
+var version = '2.1.0',
+    exec = require('child_process').exec,
     path = require('path'),
     commandLineUtils = require('./HybridShared/node/commandLineUtils');
 
@@ -26,24 +27,32 @@ if (typeof command !== 'string') {
     process.exit(1);
 }
 
-var argProcessorList = createArgProcessorList();
 var commandLineArgsMap;
-commandLineUtils.processArgsInteractive(commandLineArgs, argProcessorList, function (outputArgsMap) {
-    commandLineArgsMap = outputArgsMap;
-    switch  (command) {
-        case 'create':
+switch (command) {
+    case 'version':
+        console.log('forceios version ' + version);
+        break;
+    case 'create':
+        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
             createApp();
-            break;
-        default:
-            console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
-            usage();
-            process.exit(2);
-    }
-});
+        });
+        break;
+    case 'update':
+        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
+            updateApp();
+        });
+        break;
+    default:
+        console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
+        usage();
+        process.exit(2);
+}
 
 function usage() {
     console.log(outputColors.cyan + 'Usage:');
-    console.log(outputColors.magenta + 'forceios create');
+    console.log(outputColors.magenta + 'forceios create/update/version');
     console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
     console.log('    --appname=<Application Name>');
     console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
@@ -62,11 +71,11 @@ function createApp() {
         process.exit(4);
     }
 
-    var createAppExecutable = (appType === 'native' ? 
+    var createAppExecutable = (appType === 'native' ?
                                   path.join(__dirname, 'Templates', 'NativeAppTemplate', 'createApp.sh') :
                                   path.join(__dirname, 'Templates', 'HybridAppTemplate', 'createApp.sh')
                               );
-    
+
     // Calling out to the shell, so re-quote the command line arguments.
     var newCommandLineArgs = buildArgsFromArgMap();
     var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
@@ -87,6 +96,26 @@ function createApp() {
                 console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             }
         });
+    });
+}
+
+function updateApp() {
+    var appType = commandLineArgsMap.apptype;
+    if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local') {
+        console.log(outputColors.red + 'Unrecognized app type: \'' + appType + '\'.' + outputColors.reset + 'App type must be native, hybrid_remote, or hybrid_local.');
+        usage();
+        process.exit(4);
+    }
+
+    // Copy dependencies
+    copyDependencies(appType, function(success, msg) {
+        if (success) {
+            if (msg) console.log(outputColors.green + msg + outputColors.reset);
+            console.log(outputColors.green + 'Congratulations!  You have successfully updated your app.' + outputColors.reset);
+        } else {
+            if (msg) console.log(outputColors.red + msg + outputColors.reset);
+            console.log(outputColors.red + 'There was an error updating the app.' + outputColors.reset);
+        }
     });
 }
 
@@ -155,7 +184,7 @@ function copyDependenciesHelper(dependencies, callback) {
         case dependencyType.ARCHIVE:
             // Zip archive.  Uncompress to the app's dependencies directory.
             console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('unzip "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+            exec('unzip -o "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
                 }
@@ -196,6 +225,15 @@ function createOutputDirectoriesMap() {
     outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
     outputDirMap.appDependenciesDir = path.join(outputDirMap.appBaseContentDir, 'Dependencies');
     outputDirMap.hybridAppWwwDir = path.join(outputDirMap.appBaseContentDir, 'www');
+    if (command == 'update') {
+        outputDirMap.hybridAppWwwDir += ('_' + version);
+        exec('mkdir "' + outputDirMap.hybridAppWwwDir + '"', function(error, stdout, stderr) {
+            if (error) {
+                console.log('Error creating directory: ' + outputDirMap.hybridAppWwwDir);
+                process.exit(5);
+            }
+        });
+    }
 
     return outputDirMap;
 }
@@ -251,73 +289,76 @@ function createArgProcessorList() {
     argProcessorList.addArgProcessor('appname', 'Enter your application name:', function(appName) {
         if (appName.trim() === '')
             return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for app name: \'' + appName + '\'');
-        
+
         return new commandLineUtils.ArgProcessorOutput(true, appName.trim());
     });
-
-    // Company Identifier
-    argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
-        if (companyId.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
-        
-        // TODO: Update the company ID format as necessary.
-        return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
-    });
-
-    // Organization
-    argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
-        if (org.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
-        
-        return new commandLineUtils.ArgProcessorOutput(true, org.trim());
-    });
-
-    // Start page
-    argProcessorList.addArgProcessor(
-        'startpage',
-        'Enter the start page for your app (only applicable for hybrid_remote apps):',
-        function(startPage, argsMap) {
-            if (argsMap && argsMap.apptype === 'hybrid_remote') {
-                if (startPage.trim() === '')
-                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
-
-                return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
-            }
-
-            // Unset any value here, as it doesn't apply for non-remote apps.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        },
-        function (argsMap) {
-            return (argsMap['apptype'] === 'hybrid_remote');
-        }
-    );
 
     // Output dir
     argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for your app (defaults to the current directory):', function(outputDir) {
         if (outputDir.trim() === '')
             // Just unset the value.  The underlying script will take care of the default.
             return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
+
         return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
     });
 
-    // Connected App ID
-    argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
-        if (appId.trim() === '')
-            // Just unset the value.  The underlying script will take care of the default.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
-        return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
-    });
+    // Additional arguments for the create
+    if (command == 'create') {
+        // Company Identifier
+        argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
+            if (companyId.trim() === '')
+                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
 
-    // Connected App Callback URI
-    argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
-        if (callbackUri.trim() === '')
-            // Just unset the value.  The underlying script will take care of the default.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
-        return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
-    });
+            // TODO: Update the company ID format as necessary.
+            return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
+        });
+
+        // Organization
+        argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
+            if (org.trim() === '')
+                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
+
+            return new commandLineUtils.ArgProcessorOutput(true, org.trim());
+        });
+
+        // Start page
+        argProcessorList.addArgProcessor(
+            'startpage',
+            'Enter the start page for your app (only applicable for hybrid_remote apps):',
+            function(startPage, argsMap) {
+                if (argsMap && argsMap.apptype === 'hybrid_remote') {
+                    if (startPage.trim() === '')
+                        return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
+
+                    return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
+                }
+
+                // Unset any value here, as it doesn't apply for non-remote apps.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+            },
+            function (argsMap) {
+                return (argsMap['apptype'] === 'hybrid_remote');
+            }
+        );
+
+        // Connected App ID
+        argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
+            if (appId.trim() === '')
+                // Just unset the value.  The underlying script will take care of the default.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+
+            return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
+        });
+
+        // Connected App Callback URI
+        argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
+            if (callbackUri.trim() === '')
+                // Just unset the value.  The underlying script will take care of the default.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+
+            return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
+        });
+    }
 
     return argProcessorList;
 }
