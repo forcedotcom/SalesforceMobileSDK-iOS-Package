@@ -44,6 +44,12 @@ switch (command) {
             updateApp();
         });
         break;
+    case 'samples':
+        commandLineUtils.processArgsInteractive(commandLineArgs, samplesArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
+            fetchSamples();
+        });
+        break;
     default:
         console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
         usage();
@@ -51,7 +57,7 @@ switch (command) {
 }
 
 function usage() {
-    console.log(outputColors.cyan + 'Usage:');
+    console.log(outputColors.cyan + 'Usage:\n');
     console.log(outputColors.magenta + 'forceios create/update/version');
     console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
     console.log('    --appname=<Application Name>');
@@ -60,7 +66,55 @@ function usage() {
     console.log('    --startpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
     console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
     console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
-    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]' + outputColors.reset);
+    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]');
+    console.log(outputColors.cyan + '\n OR \n');
+    console.log(outputColors.magenta + 'forceios samples');
+    console.log('    --outputDir=<Output directory to copy the samples into>' + outputColors.reset);
+}
+
+function fetchSamples() {
+    var srcDir;
+    commandLineArgsMap.outputdir = path.join(__dirname, '..', '..', commandLineArgsMap.outputdir);
+    createDirectory(commandLineArgsMap.outputdir);
+    copySampleApp('RestAPIExplorer', 'native');
+    copySampleApp('NativeSqlAggregator', 'native');
+    copySampleApp('VFConnector', 'hybrid_remote');
+    copySampleApp('ContactExplorer', 'hybrid_local');
+    copySampleApp('SmartStoreExplorer', 'hybrid_local');
+    copySampleApp('AccountEditor', 'hybrid_local');
+}
+
+function copySampleApp(appName, appType) {
+    commandLineArgsMap.appname = appName;
+    if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
+        srcDir = path.join(__dirname, 'Samples', 'hybrid', appName);
+    } else {
+        srcDir = path.join(__dirname, 'Samples', 'native', appName);
+    }
+    copyAppFolder(srcDir);
+    createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'Dependencies'));
+    if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
+        createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'www'));
+    }
+    copyDependencies(appType, function(success, error) {
+        console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+    });
+}
+
+function createDirectory(dirName) {
+    exec('mkdir "' + dirName + '"', function(error, stdout, stderr) {
+        if (error) {
+            console.log('Error creating directory \'' + dirName + '\'' + ': ' + error);
+        }
+    });
+}
+
+function copyAppFolder(srcDir) {
+    exec('cp -R "' + srcDir + '" "' + commandLineArgsMap.outputdir + '"', function(error, stdout, stderr) {
+        if (error) {
+            console.log('Error copying directory \'' + srcDir + '\' to \'' + commandLineArgsMap.outputdir + '\': ' + error);
+        }
+    });
 }
 
 function createApp() {
@@ -158,8 +212,12 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.hybridForcePlugins);
             dependencies.push(dependencyPackages.hybridForceTk);
             dependencies.push(dependencyPackages.hybridSmartSync);
-            dependencies.push(dependencyPackages.hybridSampleAppHtml);
-            dependencies.push(dependencyPackages.hybridSampleAppJs);
+            if (command === 'samples' && commandLineArgsMap.appname === 'AccountEditor') {
+                dependencies.push(dependencyPackages.accountEditorWww);
+            } else {
+                dependencies.push(dependencyPackages.hybridSampleAppHtml);
+                dependencies.push(dependencyPackages.hybridSampleAppJs);
+            }
             dependencies.push(dependencyPackages.jquery);
             dependencies.push(dependencyPackages.backbone);
         case 'hybrid_remote':
@@ -251,8 +309,22 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.hybridSmartSync = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'smartsync.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
-    packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+   
+    if (command === 'samples') {
+        if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
+            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'AccountEditor') {
+            packageMap.accountEditorWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+        } else {
+            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        }
+    } else {
+        packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    }
+    
     packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
@@ -359,6 +431,20 @@ function createArgProcessorList() {
             return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
         });
     }
+
+    return argProcessorList;
+}
+
+function samplesArgProcessorList() {
+    var argProcessorList = new commandLineUtils.ArgProcessorList();
+
+    // Output dir
+    argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for the samples:', function(outputDir) {
+        if (outputDir.trim() === '')
+            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for output dir: \'' + outputDir + '\'');
+
+        return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
+    });
 
     return argProcessorList;
 }
