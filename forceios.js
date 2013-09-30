@@ -58,7 +58,7 @@ switch (command) {
 
 function usage() {
     console.log(outputColors.cyan + 'Usage:\n');
-    console.log(outputColors.magenta + 'forceios create/update/version');
+    console.log(outputColors.magenta + 'forceios create/update');
     console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
     console.log('    --appname=<Application Name>');
     console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
@@ -67,6 +67,8 @@ function usage() {
     console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
     console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
     console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]');
+    console.log(outputColors.cyan + '\n OR \n');
+    console.log(outputColors.magenta + 'forceios version' + outputColors.reset);
     console.log(outputColors.cyan + '\n OR \n');
     console.log(outputColors.magenta + 'forceios samples');
     console.log('    --outputDir=<Output directory to copy the samples into>' + outputColors.reset);
