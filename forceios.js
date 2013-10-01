@@ -86,17 +86,21 @@ function fetchSamples() {
         }
         copySampleApp('RestAPIExplorer', 'native', function(success, error) {
             copySampleApp('NativeSqlAggregator', 'native', function(success, error) {
-                copySampleApp('VFConnector', 'hybrid_remote', function(success, error) {
-                    copySampleApp('ContactExplorer', 'hybrid_local', function(success, error) {
-                        copySampleApp('SmartStoreExplorer', 'hybrid_local', function(success, error) {
-                            copySampleApp('AccountEditor', 'hybrid_local', function(success, error) {
-                                if (success) {
-                                    console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
-                                } else {
-                                    if (error) {
-                                        console.log(outputColors.red + msg + outputColors.reset);
-                                    }
-                                }
+                copySampleApp('FileExplorer', 'native', function(success, error) {
+                    copySampleApp('VFConnector', 'hybrid_remote', function(success, error) {
+                        copySampleApp('ContactExplorer', 'hybrid_local', function(success, error) {
+                            copySampleApp('SmartStoreExplorer', 'hybrid_local', function(success, error) {
+                                copySampleApp('AccountEditor', 'hybrid_local', function(success, error) {
+                                    copySampleApp('HybridFileExplorer', 'hybrid_local', function(success, error) {
+                                        if (success) {
+                                            console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
+                                        } else {
+                                            if (error) {
+                                                console.log(outputColors.red + msg + outputColors.reset);
+                                            }
+                                        }
+                                    });
+                                });
                             });
                         });
                     });
@@ -254,8 +258,8 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.hybridForcePlugins);
             dependencies.push(dependencyPackages.hybridForceTk);
             dependencies.push(dependencyPackages.hybridSmartSync);
-            if (command === 'samples' && commandLineArgsMap.appname === 'AccountEditor') {
-                dependencies.push(dependencyPackages.accountEditorWww);
+            if (command === 'samples' && (commandLineArgsMap.appname === 'AccountEditor' || commandLineArgsMap.appname === 'HybridFileExplorer')) {
+                dependencies.push(dependencyPackages.hybridAppWww);
             } else {
                 dependencies.push(dependencyPackages.hybridSampleAppHtml);
                 dependencies.push(dependencyPackages.hybridSampleAppJs);
@@ -351,13 +355,14 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.hybridSmartSync = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'smartsync.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
-   
     if (command === 'samples') {
         if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
             packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
             packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         } else if (commandLineArgsMap.appname === 'AccountEditor') {
-            packageMap.accountEditorWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+        } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
         } else {
             packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
             packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
@@ -366,7 +371,6 @@ function createDependencyPackageMap(outputDirMap) {
         packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     }
-    
     packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
