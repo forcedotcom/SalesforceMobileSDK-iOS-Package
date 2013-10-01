@@ -77,44 +77,83 @@ function usage() {
 function fetchSamples() {
     var srcDir;
     commandLineArgsMap.outputdir = path.join(__dirname, '..', '..', commandLineArgsMap.outputdir);
-    createDirectory(commandLineArgsMap.outputdir);
-    copySampleApp('RestAPIExplorer', 'native');
-    copySampleApp('NativeSqlAggregator', 'native');
-    copySampleApp('VFConnector', 'hybrid_remote');
-    copySampleApp('ContactExplorer', 'hybrid_local');
-    copySampleApp('SmartStoreExplorer', 'hybrid_local');
-    copySampleApp('AccountEditor', 'hybrid_local');
+    createDirectory(commandLineArgsMap.outputdir, function(success, msg) {
+        if (!success) {
+            if (msg) {
+                console.log(msg);
+            }
+            process.exit(5);
+        }
+        copySampleApp('RestAPIExplorer', 'native', function(success, error) {
+            copySampleApp('NativeSqlAggregator', 'native', function(success, error) {
+                copySampleApp('VFConnector', 'hybrid_remote', function(success, error) {
+                    copySampleApp('ContactExplorer', 'hybrid_local', function(success, error) {
+                        copySampleApp('SmartStoreExplorer', 'hybrid_local', function(success, error) {
+                            copySampleApp('AccountEditor', 'hybrid_local', function(success, error) {
+                                if (success) {
+                                    console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
+                                } else {
+                                    if (error) {
+                                        console.log(outputColors.red + msg + outputColors.reset);
+                                    }
+                                }
+                            });
+                        });
+                    });
+                });
+            });
+        });  
+    });
 }
 
-function copySampleApp(appName, appType) {
+function copySampleApp(appName, appType, callback) {
     commandLineArgsMap.appname = appName;
     if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
         srcDir = path.join(__dirname, 'Samples', 'hybrid', appName);
     } else {
         srcDir = path.join(__dirname, 'Samples', 'native', appName);
     }
-    copyAppFolder(srcDir);
-    createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'Dependencies'));
-    if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
-        createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'www'));
-    }
-    copyDependencies(appType, function(success, error) {
-        console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+    copyAppFolder(srcDir, function(success, msg) {
+        if (!success) {
+            return callback(false, msg);
+        }
+        createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'Dependencies'), function(success, error) {
+            if (error) {
+                console.log(outputColors.red + error + outputColors.reset);
+            }
+            if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
+                createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'www'), function(success, error) {
+                    copyDependencies(appType, function(success, error) {
+                        console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+                        return callback(success, error);
+                    });
+                });
+            } else {
+                copyDependencies(appType, function(success, error) {
+                    console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+                    return callback(success, error);
+                });
+            }
+        });
     });
 }
 
-function createDirectory(dirName) {
+function createDirectory(dirName, callback) {
     exec('mkdir "' + dirName + '"', function(error, stdout, stderr) {
         if (error) {
-            console.log('Error creating directory \'' + dirName + '\'' + ': ' + error);
+            return callback(false, 'Error creating directory \'' + dirName + '\'' + ': ' + error);
+        } else {
+            return callback(true, null);
         }
     });
 }
 
-function copyAppFolder(srcDir) {
+function copyAppFolder(srcDir, callback) {
     exec('cp -R "' + srcDir + '" "' + commandLineArgsMap.outputdir + '"', function(error, stdout, stderr) {
         if (error) {
-            console.log('Error copying directory \'' + srcDir + '\' to \'' + commandLineArgsMap.outputdir + '\': ' + error);
+            return callback(false, 'Error copying directory \'' + srcDir + '\' to \'' + commandLineArgsMap.outputdir + '\': ' + error);
+        } else {
+            return callback(true, null);
         }
     });
 }
