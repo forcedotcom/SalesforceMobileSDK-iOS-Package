@@ -1,6 +1,6 @@
 [submodule "Dependencies"]
 	path = Dependencies
-	url = https://github.com/forcedotcom/SalesforceMobileSDK-iOS-Distribution.git
+	url = https://github.com/wmathurin/SalesforceMobileSDK-iOS-Distribution.git
 [submodule "HybridShared"]
 	path = HybridShared
 	url = https://github.com/forcedotcom/SalesforceMobileSDK-Shared.git
