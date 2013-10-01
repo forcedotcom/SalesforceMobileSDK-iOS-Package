@@ -245,7 +245,8 @@ function copyDependencies(appType, callback) {
     ];
     switch (appType) {
         case 'native':
-            dependencies.push(dependencyPackages.restkit);
+            dependencies.push(dependencyPackages.mkNetworkKit);
+            dependencies.push(dependencyPackages.salesforceNetworkSDK);
             dependencies.push(dependencyPackages.nativesdk);
             break;
         case 'hybrid_local':
@@ -370,7 +371,8 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.sdkcore = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.restkit = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'RestKit'), outputDirMap.appDependenciesDir, dependencyType.DIR);
+    packageMap.mkNetworkKit = makePackageObj(path.join(__dirname, 'Dependencies', 'MKNetworkKit-iOS-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.salesforceNetworkSDK = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNetworkSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
