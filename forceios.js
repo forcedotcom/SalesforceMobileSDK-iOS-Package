@@ -76,7 +76,6 @@ function usage() {
 
 function fetchSamples() {
     var srcDir;
-    commandLineArgsMap.outputdir = path.join(__dirname, '..', '..', commandLineArgsMap.outputdir);
     createDirectory(commandLineArgsMap.outputdir, function(success, msg) {
         if (!success) {
             if (msg) {
