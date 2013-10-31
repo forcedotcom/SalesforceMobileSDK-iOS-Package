@@ -304,7 +304,7 @@
 				824AA0DF17251CDE00C9BD79 /* Plugins */,
 				824AA0951725140400C9BD79 /* Supporting Files */,
 			);
-			path = __HybridTemplateAppName__;
+			path = "__HybridTemplateAppName__";
 			sourceTree = "<group>";
 		};
 		824AA0951725140400C9BD79 /* Supporting Files */ = {
@@ -642,8 +642,8 @@
 			);
 			dependencies = (
 			);
-			name = __HybridTemplateAppName__;
-			productName = __HybridTemplateAppName__;
+			name = "__HybridTemplateAppName__";
+			productName = "__HybridTemplateAppName__";
 			productReference = 824AA08B1725140400C9BD79 /* __HybridTemplateAppName__.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -654,7 +654,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0460;
-				ORGANIZATIONNAME = __OrganizationName__;
+				ORGANIZATIONNAME = "__OrganizationName__";
 			};
 			buildConfigurationList = 824AA0861725140400C9BD79 /* Build configuration list for PBXProject "__HybridTemplateAppName__" */;
 			compatibilityVersion = "Xcode 3.2";

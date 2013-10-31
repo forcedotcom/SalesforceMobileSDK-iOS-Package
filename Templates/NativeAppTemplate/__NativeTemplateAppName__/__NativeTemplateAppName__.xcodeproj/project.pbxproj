@@ -313,7 +313,7 @@
 				824A9E421724EF9800C9BD79 /* Resources */,
 				824A9DDF1724E16400C9BD79 /* Supporting Files */,
 			);
-			path = __NativeTemplateAppName__;
+			path = "__NativeTemplateAppName__";
 			sourceTree = "<group>";
 		};
 		824A9DDF1724E16400C9BD79 /* Supporting Files */ = {
@@ -582,8 +582,8 @@
 			);
 			dependencies = (
 			);
-			name = __NativeTemplateAppName__;
-			productName = __NativeTemplateAppName__;
+			name = "__NativeTemplateAppName__";
+			productName = "__NativeTemplateAppName__";
 			productReference = 824A9DD51724E16400C9BD79 /* __NativeTemplateAppName__.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -594,7 +594,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0460;
-				ORGANIZATIONNAME = __OrganizationName__;
+				ORGANIZATIONNAME = "__OrganizationName__";
 			};
 			buildConfigurationList = 824A9DD01724E16400C9BD79 /* Build configuration list for PBXProject "__NativeTemplateAppName__" */;
 			compatibilityVersion = "Xcode 3.2";
