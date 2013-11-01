@@ -263,6 +263,9 @@ function copyDependencies(appType, callback) {
                 dependencies.push(dependencyPackages.hybridSampleAppHtml);
                 dependencies.push(dependencyPackages.hybridSampleAppJs);
             }
+            if (command === 'samples') {
+                dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
+            }
             dependencies.push(dependencyPackages.jquery);
             dependencies.push(dependencyPackages.backbone);
         case 'hybrid_remote':
@@ -343,7 +346,6 @@ function createOutputDirectoriesMap() {
 
 function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
-
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.cordovaBin = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.cordovaConfig = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'config.xml'), outputDirMap.appBaseContentDir, dependencyType.FILE);
@@ -355,6 +357,17 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     if (command === 'samples') {
+        if (commandLineArgsMap.appname === 'ContactExplorer') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'AccountEditor') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'VFConnector') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'vfconnector', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        }
         if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
             packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
             packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
@@ -379,7 +392,6 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
-
     return packageMap;
 }
 
