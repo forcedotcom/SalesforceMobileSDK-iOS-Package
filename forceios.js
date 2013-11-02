@@ -17,7 +17,8 @@ var outputColors = {
 var dependencyType = {
     'FILE': 0,
     'DIR': 1,
-    'ARCHIVE': 2
+    'ARCHIVE': 2,
+    'DIRCONTENTS': 3
 }
 
 var commandLineArgs = process.argv.slice(2, process.argv.length);
@@ -257,14 +258,17 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.hybridForcePlugins);
             dependencies.push(dependencyPackages.hybridForceTk);
             dependencies.push(dependencyPackages.hybridSmartSync);
-            if (command === 'samples' && (commandLineArgsMap.appname === 'AccountEditor' || commandLineArgsMap.appname === 'HybridFileExplorer')) {
-                dependencies.push(dependencyPackages.hybridAppWww);
+            if (command === 'samples') {
+                if (commandLineArgsMap.appname === 'AccountEditor' || commandLineArgsMap.appname === 'HybridFileExplorer') {
+                    dependencies.push(dependencyPackages.hybridAppWww);
+                } else {
+                    dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
+                    dependencies.push(dependencyPackages.hybridSampleAppHtml);
+                    dependencies.push(dependencyPackages.hybridSampleAppJs);
+                }
             } else {
                 dependencies.push(dependencyPackages.hybridSampleAppHtml);
                 dependencies.push(dependencyPackages.hybridSampleAppJs);
-            }
-            if (command === 'samples') {
-                dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
             }
             dependencies.push(dependencyPackages.jquery);
             dependencies.push(dependencyPackages.backbone);
@@ -317,6 +321,16 @@ function copyDependenciesHelper(dependencies, callback) {
                 copyDependenciesHelper(dependencies, callback);
             });
             break;
+        case dependencyType.DIRCONTENTS:
+            // Recursive copy to the contents of the directory.
+            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
+            exec('cp -rf "' + dependencyObj.srcPath + '"/ "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+                if (error) {
+                    return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                }
+                copyDependenciesHelper(dependencies, callback);
+            });
+            break;
     }
 }
 
@@ -359,12 +373,8 @@ function createDependencyPackageMap(outputDirMap) {
     if (command === 'samples') {
         if (commandLineArgsMap.appname === 'ContactExplorer') {
             packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
-            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         } else if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
             packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        } else if (commandLineArgsMap.appname === 'AccountEditor') {
-            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         } else if (commandLineArgsMap.appname === 'VFConnector') {
             packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'vfconnector', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         }
@@ -372,9 +382,9 @@ function createDependencyPackageMap(outputDirMap) {
             packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
             packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         } else if (commandLineArgsMap.appname === 'AccountEditor') {
-            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
         } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
-            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
         } else {
             packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
             packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
