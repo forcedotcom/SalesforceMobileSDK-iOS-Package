@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-var exec = require('child_process').exec,
+var version = '2.1.0',
+    exec = require('child_process').exec,
     path = require('path'),
     commandLineUtils = require('./HybridShared/node/commandLineUtils');
 
@@ -16,7 +17,8 @@ var outputColors = {
 var dependencyType = {
     'FILE': 0,
     'DIR': 1,
-    'ARCHIVE': 2
+    'ARCHIVE': 2,
+    'DIRCONTENTS': 3
 }
 
 var commandLineArgs = process.argv.slice(2, process.argv.length);
@@ -26,24 +28,38 @@ if (typeof command !== 'string') {
     process.exit(1);
 }
 
-var argProcessorList = createArgProcessorList();
 var commandLineArgsMap;
-commandLineUtils.processArgsInteractive(commandLineArgs, argProcessorList, function (outputArgsMap) {
-    commandLineArgsMap = outputArgsMap;
-    switch  (command) {
-        case 'create':
+switch (command) {
+    case 'version':
+        console.log('forceios version ' + version);
+        break;
+    case 'create':
+        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
             createApp();
-            break;
-        default:
-            console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
-            usage();
-            process.exit(2);
-    }
-});
+        });
+        break;
+    case 'update':
+        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
+            updateApp();
+        });
+        break;
+    case 'samples':
+        commandLineUtils.processArgsInteractive(commandLineArgs, samplesArgProcessorList(), function (outputArgsMap) {
+            commandLineArgsMap = outputArgsMap;
+            fetchSamples();
+        });
+        break;
+    default:
+        console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
+        usage();
+        process.exit(2);
+}
 
 function usage() {
-    console.log(outputColors.cyan + 'Usage:');
-    console.log(outputColors.magenta + 'forceios create');
+    console.log(outputColors.cyan + 'Usage:\n');
+    console.log(outputColors.magenta + 'forceios create/update');
     console.log('    --apptype=<Application Type> (native, hybrid_remote, hybrid_local)');
     console.log('    --appname=<Application Name>');
     console.log('    --companyid=<Company Identifier> (com.myCompany.myApp)');
@@ -51,7 +67,99 @@ function usage() {
     console.log('    --startpage=<App Start Page> (The start page of your remote app. Only required for hybrid_remote)');
     console.log('    [--outputdir=<Output directory> (Defaults to the current working directory)]');
     console.log('    [--appid=<Salesforce App Identifier> (The Consumer Key for your app. Defaults to the sample app.)]');
-    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]' + outputColors.reset);
+    console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]');
+    console.log(outputColors.cyan + '\n OR \n');
+    console.log(outputColors.magenta + 'forceios version' + outputColors.reset);
+    console.log(outputColors.cyan + '\n OR \n');
+    console.log(outputColors.magenta + 'forceios samples');
+    console.log('    --outputDir=<Output directory to copy the samples into>' + outputColors.reset);
+}
+
+function fetchSamples() {
+    var srcDir;
+    createDirectory(commandLineArgsMap.outputdir, function(success, msg) {
+        if (!success) {
+            if (msg) {
+                console.log(msg);
+            }
+            process.exit(5);
+        }
+        copySampleApp('RestAPIExplorer', 'native', function(success, error) {
+            copySampleApp('NativeSqlAggregator', 'native', function(success, error) {
+                copySampleApp('FileExplorer', 'native', function(success, error) {
+                    copySampleApp('VFConnector', 'hybrid_remote', function(success, error) {
+                        copySampleApp('ContactExplorer', 'hybrid_local', function(success, error) {
+                            copySampleApp('SmartStoreExplorer', 'hybrid_local', function(success, error) {
+                                copySampleApp('AccountEditor', 'hybrid_local', function(success, error) {
+                                    copySampleApp('HybridFileExplorer', 'hybrid_local', function(success, error) {
+                                        if (success) {
+                                            console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
+                                        } else {
+                                            if (error) {
+                                                console.log(outputColors.red + msg + outputColors.reset);
+                                            }
+                                        }
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });  
+    });
+}
+
+function copySampleApp(appName, appType, callback) {
+    commandLineArgsMap.appname = appName;
+    if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
+        srcDir = path.join(__dirname, 'Samples', 'hybrid', appName);
+    } else {
+        srcDir = path.join(__dirname, 'Samples', 'native', appName);
+    }
+    copyAppFolder(srcDir, function(success, msg) {
+        if (!success) {
+            return callback(false, msg);
+        }
+        createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'Dependencies'), function(success, error) {
+            if (error) {
+                console.log(outputColors.red + error + outputColors.reset);
+            }
+            if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
+                createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'www'), function(success, error) {
+                    copyDependencies(appType, function(success, error) {
+                        console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+                        return callback(success, error);
+                    });
+                });
+            } else {
+                copyDependencies(appType, function(success, error) {
+                    console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
+                    return callback(success, error);
+                });
+            }
+        });
+    });
+}
+
+function createDirectory(dirName, callback) {
+    exec('mkdir "' + dirName + '"', function(error, stdout, stderr) {
+        if (error) {
+            return callback(false, 'Error creating directory \'' + dirName + '\'' + ': ' + error);
+        } else {
+            return callback(true, null);
+        }
+    });
+}
+
+function copyAppFolder(srcDir, callback) {
+    exec('cp -R "' + srcDir + '" "' + commandLineArgsMap.outputdir + '"', function(error, stdout, stderr) {
+        if (error) {
+            return callback(false, 'Error copying directory \'' + srcDir + '\' to \'' + commandLineArgsMap.outputdir + '\': ' + error);
+        } else {
+            return callback(true, null);
+        }
+    });
 }
 
 function createApp() {
@@ -62,11 +170,11 @@ function createApp() {
         process.exit(4);
     }
 
-    var createAppExecutable = (appType === 'native' ? 
+    var createAppExecutable = (appType === 'native' ?
                                   path.join(__dirname, 'Templates', 'NativeAppTemplate', 'createApp.sh') :
                                   path.join(__dirname, 'Templates', 'HybridAppTemplate', 'createApp.sh')
                               );
-    
+
     // Calling out to the shell, so re-quote the command line arguments.
     var newCommandLineArgs = buildArgsFromArgMap();
     var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
@@ -87,6 +195,26 @@ function createApp() {
                 console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             }
         });
+    });
+}
+
+function updateApp() {
+    var appType = commandLineArgsMap.apptype;
+    if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local') {
+        console.log(outputColors.red + 'Unrecognized app type: \'' + appType + '\'.' + outputColors.reset + 'App type must be native, hybrid_remote, or hybrid_local.');
+        usage();
+        process.exit(4);
+    }
+
+    // Copy dependencies
+    copyDependencies(appType, function(success, msg) {
+        if (success) {
+            if (msg) console.log(outputColors.green + msg + outputColors.reset);
+            console.log(outputColors.green + 'Congratulations!  You have successfully updated your app.' + outputColors.reset);
+        } else {
+            if (msg) console.log(outputColors.red + msg + outputColors.reset);
+            console.log(outputColors.red + 'There was an error updating the app.' + outputColors.reset);
+        }
     });
 }
 
@@ -121,7 +249,8 @@ function copyDependencies(appType, callback) {
     ];
     switch (appType) {
         case 'native':
-            dependencies.push(dependencyPackages.restkit);
+            dependencies.push(dependencyPackages.mkNetworkKit);
+            dependencies.push(dependencyPackages.salesforceNetworkSDK);
             dependencies.push(dependencyPackages.nativesdk);
             break;
         case 'hybrid_local':
@@ -129,8 +258,18 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.hybridForcePlugins);
             dependencies.push(dependencyPackages.hybridForceTk);
             dependencies.push(dependencyPackages.hybridSmartSync);
-            dependencies.push(dependencyPackages.hybridSampleAppHtml);
-            dependencies.push(dependencyPackages.hybridSampleAppJs);
+            if (command === 'samples') {
+                if (commandLineArgsMap.appname === 'AccountEditor' || commandLineArgsMap.appname === 'HybridFileExplorer') {
+                    dependencies.push(dependencyPackages.hybridAppWww);
+                } else {
+                    dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
+                    dependencies.push(dependencyPackages.hybridSampleAppHtml);
+                    dependencies.push(dependencyPackages.hybridSampleAppJs);
+                }
+            } else {
+                dependencies.push(dependencyPackages.hybridSampleAppHtml);
+                dependencies.push(dependencyPackages.hybridSampleAppJs);
+            }
             dependencies.push(dependencyPackages.jquery);
             dependencies.push(dependencyPackages.backbone);
         case 'hybrid_remote':
@@ -155,7 +294,7 @@ function copyDependenciesHelper(dependencies, callback) {
         case dependencyType.ARCHIVE:
             // Zip archive.  Uncompress to the app's dependencies directory.
             console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('unzip "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+            exec('unzip -o "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
                 }
@@ -182,6 +321,16 @@ function copyDependenciesHelper(dependencies, callback) {
                 copyDependenciesHelper(dependencies, callback);
             });
             break;
+        case dependencyType.DIRCONTENTS:
+            // Recursive copy to the contents of the directory.
+            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
+            exec('cp -rf "' + dependencyObj.srcPath + '"/ "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
+                if (error) {
+                    return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                }
+                copyDependenciesHelper(dependencies, callback);
+            });
+            break;
     }
 }
 
@@ -196,13 +345,21 @@ function createOutputDirectoriesMap() {
     outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
     outputDirMap.appDependenciesDir = path.join(outputDirMap.appBaseContentDir, 'Dependencies');
     outputDirMap.hybridAppWwwDir = path.join(outputDirMap.appBaseContentDir, 'www');
+    if (command == 'update') {
+        outputDirMap.hybridAppWwwDir += ('_' + version);
+        exec('mkdir "' + outputDirMap.hybridAppWwwDir + '"', function(error, stdout, stderr) {
+            if (error) {
+                console.log('Error creating directory: ' + outputDirMap.hybridAppWwwDir);
+                process.exit(5);
+            }
+        });
+    }
 
     return outputDirMap;
 }
 
 function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
-
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.cordovaBin = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.cordovaConfig = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'config.xml'), outputDirMap.appBaseContentDir, dependencyType.FILE);
@@ -213,17 +370,38 @@ function createDependencyPackageMap(outputDirMap) {
     packageMap.hybridSmartSync = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'smartsync.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
     packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
-    packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    if (command === 'samples') {
+        if (commandLineArgsMap.appname === 'ContactExplorer') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'VFConnector') {
+            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'vfconnector', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        }
+        if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
+            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        } else if (commandLineArgsMap.appname === 'AccountEditor') {
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
+        } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
+            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
+        } else {
+            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        }
+    } else {
+        packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+        packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
+    }
     packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.sdkcore = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.restkit = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'RestKit'), outputDirMap.appDependenciesDir, dependencyType.DIR);
+    packageMap.mkNetworkKit = makePackageObj(path.join(__dirname, 'Dependencies', 'MKNetworkKit-iOS-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.salesforceNetworkSDK = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNetworkSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
     packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
-
     return packageMap;
 }
 
@@ -251,72 +429,89 @@ function createArgProcessorList() {
     argProcessorList.addArgProcessor('appname', 'Enter your application name:', function(appName) {
         if (appName.trim() === '')
             return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for app name: \'' + appName + '\'');
-        
+
         return new commandLineUtils.ArgProcessorOutput(true, appName.trim());
     });
-
-    // Company Identifier
-    argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
-        if (companyId.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
-        
-        // TODO: Update the company ID format as necessary.
-        return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
-    });
-
-    // Organization
-    argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
-        if (org.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
-        
-        return new commandLineUtils.ArgProcessorOutput(true, org.trim());
-    });
-
-    // Start page
-    argProcessorList.addArgProcessor(
-        'startpage',
-        'Enter the start page for your app (only applicable for hybrid_remote apps):',
-        function(startPage, argsMap) {
-            if (argsMap && argsMap.apptype === 'hybrid_remote') {
-                if (startPage.trim() === '')
-                    return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
-
-                return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
-            }
-
-            // Unset any value here, as it doesn't apply for non-remote apps.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        },
-        function (argsMap) {
-            return (argsMap['apptype'] === 'hybrid_remote');
-        }
-    );
 
     // Output dir
     argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for your app (defaults to the current directory):', function(outputDir) {
         if (outputDir.trim() === '')
             // Just unset the value.  The underlying script will take care of the default.
             return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
+
         return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
     });
 
-    // Connected App ID
-    argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
-        if (appId.trim() === '')
-            // Just unset the value.  The underlying script will take care of the default.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
-        return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
-    });
+    // Additional arguments for the create
+    if (command == 'create') {
+        // Company Identifier
+        argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
+            if (companyId.trim() === '')
+                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
 
-    // Connected App Callback URI
-    argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
-        if (callbackUri.trim() === '')
-            // Just unset the value.  The underlying script will take care of the default.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
-        
-        return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
+            // TODO: Update the company ID format as necessary.
+            return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
+        });
+
+        // Organization
+        argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
+            if (org.trim() === '')
+                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
+
+            return new commandLineUtils.ArgProcessorOutput(true, org.trim());
+        });
+
+        // Start page
+        argProcessorList.addArgProcessor(
+            'startpage',
+            'Enter the start page for your app (only applicable for hybrid_remote apps):',
+            function(startPage, argsMap) {
+                if (argsMap && argsMap.apptype === 'hybrid_remote') {
+                    if (startPage.trim() === '')
+                        return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
+
+                    return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
+                }
+
+                // Unset any value here, as it doesn't apply for non-remote apps.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+            },
+            function (argsMap) {
+                return (argsMap['apptype'] === 'hybrid_remote');
+            }
+        );
+
+        // Connected App ID
+        argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
+            if (appId.trim() === '')
+                // Just unset the value.  The underlying script will take care of the default.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+
+            return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
+        });
+
+        // Connected App Callback URI
+        argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
+            if (callbackUri.trim() === '')
+                // Just unset the value.  The underlying script will take care of the default.
+                return new commandLineUtils.ArgProcessorOutput(true, undefined);
+
+            return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
+        });
+    }
+
+    return argProcessorList;
+}
+
+function samplesArgProcessorList() {
+    var argProcessorList = new commandLineUtils.ArgProcessorList();
+
+    // Output dir
+    argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for the samples:', function(outputDir) {
+        if (outputDir.trim() === '')
+            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for output dir: \'' + outputDir + '\'');
+
+        return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
     });
 
     return argProcessorList;
