@@ -244,6 +244,7 @@ function copyDependencies(appType, callback) {
         dependencyPackages.commonutils,
         dependencyPackages.oauth,
         dependencyPackages.sdkcore,
+        dependencyPackages.securityLib,
         dependencyPackages.openssl,
         dependencyPackages.sqlcipher
     ];
@@ -297,6 +298,8 @@ function copyDependenciesHelper(dependencies, callback) {
             exec('unzip -o "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                } else if (dependencyObj.postProcessingAction) {
+                    dependencyObj.postProcessingAction();
                 }
                 copyDependenciesHelper(dependencies, callback);
             });
@@ -307,6 +310,8 @@ function copyDependenciesHelper(dependencies, callback) {
             exec('cp -R "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                } else if (dependencyObj.postProcessingAction) {
+                    dependencyObj.postProcessingAction();
                 }
                 copyDependenciesHelper(dependencies, callback);
             });
@@ -317,6 +322,8 @@ function copyDependenciesHelper(dependencies, callback) {
             exec('cp "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'Error copying file(s) \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                } else if (dependencyObj.postProcessingAction) {
+                    dependencyObj.postProcessingAction();
                 }
                 copyDependenciesHelper(dependencies, callback);
             });
@@ -327,6 +334,8 @@ function copyDependenciesHelper(dependencies, callback) {
             exec('cp -rf "' + dependencyObj.srcPath + '"/ "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
                 if (error) {
                     return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
+                } else if (dependencyObj.postProcessingAction) {
+                    dependencyObj.postProcessingAction();
                 }
                 copyDependenciesHelper(dependencies, callback);
             });
@@ -361,7 +370,21 @@ function createOutputDirectoriesMap() {
 function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.cordovaBin = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.cordovaBin = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'Cordova-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'Cordova') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'Cordova'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
     packageMap.cordovaConfig = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'config.xml'), outputDirMap.appBaseContentDir, dependencyType.FILE);
     packageMap.cordovaJs = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'cordova-2.3.0.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     packageMap.cordovaCaptureBundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Capture.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
@@ -393,20 +416,119 @@ function createDependencyPackageMap(outputDirMap) {
         packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
         packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
     }
-    packageMap.hybridsdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.nativesdk = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.oauth = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.sdkcore = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.mkNetworkKit = makePackageObj(path.join(__dirname, 'Dependencies', 'MKNetworkKit-iOS-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
-    packageMap.salesforceNetworkSDK = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceNetworkSDK-Release.zip'), outputDirMap.appDependenciesDir, dependencyType.ARCHIVE);
+    packageMap.hybridsdk = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.nativesdk = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.oauth = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.sdkcore = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.securityLib = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceSecurity-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.mkNetworkKit = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'MKNetworkKit-iOS-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.salesforceNetworkSDK = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceNetworkSDK-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
     packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     return packageMap;
 }
 
-function makePackageObj(srcPath, destPath, dependencyType) {
-    return { 'srcPath': srcPath, 'destPath': destPath, 'dependencyType': dependencyType };
+function makePackageObj(srcPath, destPath, dependencyType, postProcessingAction) {
+    return { 'srcPath': srcPath, 'destPath': destPath, 'dependencyType': dependencyType, 'postProcessingAction': postProcessingAction };
 }
 
 // -----
