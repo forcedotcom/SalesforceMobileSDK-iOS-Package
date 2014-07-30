@@ -22,7 +22,7 @@
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <SalesforceHybridSDK/SFHybridViewController.h>
+#import "SFHybridViewController.h"
 
 @interface AppDelegate : NSObject <UIApplicationDelegate>
 {

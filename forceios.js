@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '2.2.1',
+var version = '2.2.2',
     exec = require('child_process').exec,
     path = require('path'),
     commandLineUtils = require('./HybridShared/node/commandLineUtils');
@@ -278,6 +278,9 @@ function copyDependencies(appType, callback) {
             dependencies.push(dependencyPackages.cordovaConfig);
             dependencies.push(dependencyPackages.cordovaCaptureBundle);
             dependencies.push(dependencyPackages.hybridsdk);
+            if (command === 'samples' && commandLineArgsMap.appname === 'VFConnector') {
+                dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
+            }
             break;
     }
 
