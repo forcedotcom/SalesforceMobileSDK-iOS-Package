@@ -23,7 +23,7 @@
  */
 
 #import <UIKit/UIKit.h>
-#import <SalesforceNativeSDK/SFRestAPI.h>
+#import "SFRestAPI.h"
 
 @interface RootViewController : UITableViewController <SFRestDelegate> {
     

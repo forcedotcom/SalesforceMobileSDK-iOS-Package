@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '2.1.0',
+var version = '2.3.0',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -207,7 +207,7 @@ function createHybridApp(config) {
          '',
          outputColors.cyan + 'To use your new application in XCode, do the following:' + outputColors.reset,
          '   - open ' + config.projectDir + '/platforms/ios/' + config.appname + '.xcodeproj in XCode',
-         '   - build and run'
+         '   - build and run',
          ''].join('\n');
     console.log(nextStepsOutput);
     console.log(outputColors.cyan + 'Before you ship, make sure to plug your OAuth Client ID,\nCallback URI, and OAuth Scopes into '
