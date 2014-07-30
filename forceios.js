@@ -207,7 +207,7 @@ function createHybridApp(config) {
          '',
          outputColors.cyan + 'To use your new application in XCode, do the following:' + outputColors.reset,
          '   - open ' + config.projectDir + '/platforms/ios/' + config.appname + '.xcodeproj in XCode',
-         '   - build and run'
+         '   - build and run',
          ''].join('\n');
     console.log(nextStepsOutput);
     console.log(outputColors.cyan + 'Before you ship, make sure to plug your OAuth Client ID,\nCallback URI, and OAuth Scopes into '
