@@ -5,7 +5,10 @@ var version = '2.3.0',
     exec = require('child_process').exec,
     fs = require('fs'),
     path = require('path'),
-    commandLineUtils = require('./HybridShared/node/commandLineUtils');
+    commandLineUtils = require('./HybridShared/node/commandLineUtils'),
+    miscUtils = require('./HybridShared/node/utils');
+
+var minimumCordovaVersion = '3.5';
 
 var outputColors = {
     'red': '\x1b[31;1m',
@@ -181,7 +184,15 @@ function createHybridApp(config) {
         console.log('cordova command line tool could not be found.  Make sure you install the cordova CLI from https://www.npmjs.org/package/cordova.');
         process.exit(11);
     }
+
     var cordovaCliVersion = cordovaVersionResult.output.replace('\n', '');
+    var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaVersion);
+    var cordovaCliVersionNum = miscUtils.getVersionNumberFromString(cordovaCliVersion);
+    if (cordovaCliVersionNum < minimumCordovaVersionNum) {
+        console.log('Installed cordova command line tool version (' + cordovaCliVersion + ') is less than the minimum required version (' + minimumCordovaVersion + ').  Please update your version of Cordova.');
+        process.exit(12);
+    }
+
     console.log('Using cordova CLI version ' + cordovaCliVersion + ' to create the hybrid app.');
 
     shelljs.exec('cordova create ' + projectDir + ' ' + config.companyid + ' ' + config.appname);
