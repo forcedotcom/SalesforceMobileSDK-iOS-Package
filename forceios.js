@@ -6,7 +6,8 @@ var version = '2.3.0',
     fs = require('fs'),
     path = require('path'),
     commandLineUtils = require('./HybridShared/node/commandLineUtils'),
-    miscUtils = require('./HybridShared/node/utils');
+    miscUtils = require('./HybridShared/node/utils'),
+    cordovaHelper = require('./HybridShared/node/cordovaHelper');
 
 var minimumCordovaVersion = '3.5';
 
@@ -179,13 +180,12 @@ function createHybridApp(config) {
     var projectDir = path.join(outputDir, config.appname);
 
     // Make sure the Cordova CLI client exists.
-    var cordovaVersionResult = shelljs.exec('cordova -v', { 'silent' : true });
-    if (cordovaVersionResult.code !== 0) {
+    var cordovaCliVersion = cordovaHelper.getCordovaCliVersion();
+    if (cordovaCliVersion === null) {
         console.log('cordova command line tool could not be found.  Make sure you install the cordova CLI from https://www.npmjs.org/package/cordova.');
         process.exit(11);
     }
 
-    var cordovaCliVersion = cordovaVersionResult.output.replace('\n', '');
     var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaVersion);
     var cordovaCliVersionNum = miscUtils.getVersionNumberFromString(cordovaCliVersion);
     if (cordovaCliVersionNum < minimumCordovaVersionNum) {
