@@ -5,7 +5,10 @@ var version = '2.3.0',
     exec = require('child_process').exec,
     fs = require('fs'),
     path = require('path'),
-    commandLineUtils = require('./HybridShared/node/commandLineUtils');
+    commandLineUtils = require('./HybridShared/node/commandLineUtils'),
+    miscUtils = require('./HybridShared/node/utils');
+
+var minimumCordovaVersion = '3.5';
 
 var outputColors = {
     'red': '\x1b[31;1m',
@@ -92,7 +95,7 @@ function fetchSamples(config) {
             if (msg) {
                 console.log(msg);
             }
-            process.exit(5);
+            process.exit(2);
         }
         copySampleApp(config, 'RestAPIExplorer', 'native', function(success, error) {
             copySampleApp(config, 'NativeSqlAggregator', 'native', function(success, error) {
@@ -169,11 +172,31 @@ function createApp(config) {
 // Helper to create hybrid application
 //
 function createHybridApp(config) {
-    config.projectDir = path.join(config.outputdir, config.appname);
     // console.log("Config:" + JSON.stringify(config, null, 2));
+    var outputDir = config.outputdir;
+    if (!outputDir) outputDir = process.cwd();
+    outputDir = path.resolve(outputDir);
+    var projectDir = path.join(outputDir, config.appname);
 
-    shelljs.exec('cordova create ' + config.projectDir + ' ' + config.packagename + ' ' + config.appname);
-    shelljs.pushd(config.projectDir);
+    // Make sure the Cordova CLI client exists.
+    var cordovaVersionResult = shelljs.exec('cordova -v', { 'silent' : true });
+    if (cordovaVersionResult.code !== 0) {
+        console.log('cordova command line tool could not be found.  Make sure you install the cordova CLI from https://www.npmjs.org/package/cordova.');
+        process.exit(11);
+    }
+
+    var cordovaCliVersion = cordovaVersionResult.output.replace('\n', '');
+    var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaVersion);
+    var cordovaCliVersionNum = miscUtils.getVersionNumberFromString(cordovaCliVersion);
+    if (cordovaCliVersionNum < minimumCordovaVersionNum) {
+        console.log('Installed cordova command line tool version (' + cordovaCliVersion + ') is less than the minimum required version (' + minimumCordovaVersion + ').  Please update your version of Cordova.');
+        process.exit(12);
+    }
+
+    console.log('Using cordova CLI version ' + cordovaCliVersion + ' to create the hybrid app.');
+
+    shelljs.exec('cordova create ' + projectDir + ' ' + config.companyid + ' ' + config.appname);
+    shelljs.pushd(projectDir);
     shelljs.exec('cordova platform add ios');
     shelljs.exec('cordova plugin add https://github.com/wmathurin/SalesforceMobileSDK-CordovaPlugin');
     shelljs.exec('node plugins/com.salesforce/tools/postinstall-ios.js');
@@ -196,17 +219,17 @@ function createHybridApp(config) {
     // Inform the user of next steps.
     var nextStepsOutput =
         ['',
-         outputColors.green + 'Your application project is ready in ' + config.outputdir + '.',
+         outputColors.green + 'Your application project is ready in ' + projectDir + '.',
          '',
          outputColors.cyan + 'To build the new application, do the following:' + outputColors.reset,
-         '   - cd ' + config.outputdir,
+         '   - cd ' + projectDir,
          '   - cordova build',
          '',
          outputColors.cyan + 'To run the application, start an emulator or plug in your device and run:' + outputColors.reset,
          '   - cordova run',
          '',
          outputColors.cyan + 'To use your new application in XCode, do the following:' + outputColors.reset,
-         '   - open ' + config.projectDir + '/platforms/ios/' + config.appname + '.xcodeproj in XCode',
+         '   - open ' + projectDir + '/platforms/ios/' + config.appname + '.xcodeproj in XCode',
          '   - build and run',
          ''].join('\n');
     console.log(nextStepsOutput);
@@ -227,7 +250,7 @@ function createNativeApp(config) {
         if (stderr) console.log(stderr);
         if (error) {
             console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
-            process.exit(5);
+            process.exit(3);
         }
 
         // Copy dependencies
@@ -403,7 +426,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth'));
-                        process.exit(5);
+                        process.exit(6);
                     }
                 }
             );
@@ -418,7 +441,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore'));
-                        process.exit(5);
+                        process.exit(7);
                     }
                 }
             );
@@ -433,7 +456,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity'));
-                        process.exit(5);
+                        process.exit(8);
                     }
                 }
             );
@@ -448,7 +471,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS'));
-                        process.exit(5);
+                        process.exit(9);
                     }
                 }
             );
@@ -463,7 +486,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK'));
-                        process.exit(5);
+                        process.exit(10);
                     }
                 }
             );
