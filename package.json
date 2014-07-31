@@ -11,8 +11,7 @@
 	"os" : [ "darwin" ],
 	"bin" : { "forceios" : "./forceios.js" },
     "dependencies": {
-        "shelljs": ">=0.1.4",
-        "cordova": ">=3.3.0"
+        "shelljs": ">=0.1.4"
     },
 	"repository": {
 		"type" : "git",
