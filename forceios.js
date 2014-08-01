@@ -199,8 +199,8 @@ function createHybridApp(config) {
     shelljs.pushd(projectDir);
     shelljs.exec('cordova platform add ios');
     shelljs.exec('cordova plugin add https://github.com/wmathurin/SalesforceMobileSDK-CordovaPlugin');
-    shelljs.exec('node plugins/com.salesforce/tools/postinstall-ios.js');
 
+    // Add bootconfig.json
     var bootconfig = {
         "remoteAccessConsumerKey": config.appid || "3MVG9Iu66FKeHhINkB1l7xt7kR8czFcCTUhgoA8Ol2Ltf1eYHOU4SqQRSEitYFDUpqRWcoQ2.dBv_a1Dyu5xa",
         "oauthRedirectURI": config.callbackuri || "testsfdc:///mobilesdk/detect/oauth/done",
@@ -214,6 +214,7 @@ function createHybridApp(config) {
     // console.log("Bootconfig:" + JSON.stringify(bootconfig, null, 2));
 
     fs.writeFileSync('www/bootconfig.json', JSON.stringify(bootconfig, null, 2));
+    shelljs.exec('cordova prepare ios');
     shelljs.popd();
 
     // Inform the user of next steps.
