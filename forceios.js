@@ -314,6 +314,7 @@ function copyDependencies(config, callback) {
     var dependencyPackages = createDependencyPackageMap(outputDirMap);
     var dependencies = [
         dependencyPackages.sdkresources,
+        dependencyPackages.sdkappsettingsbundle,
         dependencyPackages.commonutils,
         dependencyPackages.oauth,
         dependencyPackages.sdkcore,
@@ -403,6 +404,7 @@ function createOutputDirectoriesMap(config) {
 function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
+    packageMap.sdkappsettingsbundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Settings.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.nativesdk = makePackageObj(
         path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'),
         outputDirMap.appDependenciesDir,
