@@ -200,6 +200,15 @@ function createHybridApp(config) {
     shelljs.exec('cordova platform add ios');
     shelljs.exec('cordova plugin add https://github.com/wmathurin/SalesforceMobileSDK-CordovaPlugin');
 
+    // Remove the default Cordova app.
+    shelljs.rm('-rf', path.join('www', '*'));
+
+    // Copy the sample app, if a local app was selected.
+    if (config.apptype === 'hybrid_local') {
+        var sampleAppFolder = path.join(__dirname, 'HybridShared', 'samples', 'userlist');
+        shelljs.cp('-R', path.join(sampleAppFolder, '*'), 'www');
+    }
+
     // Add bootconfig.json
     var bootconfig = {
         "remoteAccessConsumerKey": config.appid || "3MVG9Iu66FKeHhINkB1l7xt7kR8czFcCTUhgoA8Ol2Ltf1eYHOU4SqQRSEitYFDUpqRWcoQ2.dBv_a1Dyu5xa",
@@ -213,7 +222,7 @@ function createHybridApp(config) {
     };
     // console.log("Bootconfig:" + JSON.stringify(bootconfig, null, 2));
 
-    fs.writeFileSync('www/bootconfig.json', JSON.stringify(bootconfig, null, 2));
+    fs.writeFileSync(path.join('www', 'bootconfig.json'), JSON.stringify(bootconfig, null, 2));
     shelljs.exec('cordova prepare ios');
     shelljs.popd();
 
