@@ -52,10 +52,6 @@ function main(args) {
         processorList = updateArgProcessorList();
         commandHandler = updateApp;
         break;
-    case 'samples':
-        processorList = samplesArgProcessorList();
-        commandHandler = fetchSamples;
-        break;
     default:
         usage();
         process.exit(1);
@@ -81,79 +77,7 @@ function usage() {
     console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]');
     console.log(outputColors.cyan + '\n OR \n');
     console.log(outputColors.magenta + 'forceios version' + outputColors.reset);
-    console.log(outputColors.cyan + '\n OR \n');
-    console.log(outputColors.magenta + 'forceios samples');
-    console.log('    --outputDir=<Output directory to copy the samples into>' + outputColors.reset);
 }
-
-//
-// Helper to 'samples' command
-//
-function fetchSamples(config) {
-    var srcDir;
-    createDirectory(config.outputdir, function(success, msg) {
-        if (!success) {
-            if (msg) {
-                console.log(msg);
-            }
-            process.exit(2);
-        }
-        copySampleApp(config, 'RestAPIExplorer', 'native', function(success, error) {
-            copySampleApp(config, 'NativeSqlAggregator', 'native', function(success, error) {
-                copySampleApp(config, 'FileExplorer', 'native', function(success, error) {
-                    if (success) {
-                        console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
-                    } else {
-                        if (error) {
-                            console.log(outputColors.red + msg + outputColors.reset);
-                        }
-                    }
-                });
-            });
-        });
-    });
-}
-
-function copySampleApp(config, appName, appType, callback) {
-    config.appname = appName;
-    srcDir = path.join(__dirname, 'Samples', 'native', appName);
-
-    copyAppFolder(config, srcDir, function(success, msg) {
-        if (!success) {
-            return callback(false, msg);
-        }
-        createDirectory(path.join(config.outputdir, appName, appName, 'Dependencies'), function(success, error) {
-            if (error) {
-                console.log(outputColors.red + error + outputColors.reset);
-            }
-            copyDependencies(config, function(success, error) {
-                console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
-                return callback(success, error);
-            });
-        });
-    });
-}
-
-function createDirectory(dirName, callback) {
-    exec('mkdir "' + dirName + '"', function(error, stdout, stderr) {
-        if (error) {
-            return callback(false, 'Error creating directory \'' + dirName + '\'' + ': ' + error);
-        } else {
-            return callback(true, null);
-        }
-    });
-}
-
-function copyAppFolder(config, srcDir, callback) {
-    exec('cp -R "' + srcDir + '" "' + config.outputdir + '"', function(error, stdout, stderr) {
-        if (error) {
-            return callback(false, 'Error copying directory \'' + srcDir + '\' to \'' + config.outputdir + '\': ' + error);
-        } else {
-            return callback(true, null);
-        }
-    });
-}
-
 
 //
 // Helper for 'create' command
@@ -554,12 +478,6 @@ function createArgProcessorList() {
     // Connected App Callback URI
     addProcessorForOptional(argProcessorList, 'callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):');
 
-    return argProcessorList;
-}
-
-function samplesArgProcessorList() {
-    var argProcessorList = new commandLineUtils.ArgProcessorList();
-    addProcessorFor(argProcessorList, 'outputdir', 'Enter the output directory for the samples:', 'Invalid value for output dir: \'$val\'.',  /\S+/);
     return argProcessorList;
 }
 
