@@ -43,6 +43,7 @@ function main(args) {
     switch (command || '') {
     case 'version':
         console.log('forceios version ' + version);
+        process.exit(0);
         break;
     case 'create':
         processorList = createArgProcessorList(); 
