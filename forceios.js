@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
-var version = '2.2.2',
+var version = '2.3.0',
+    shelljs = require('shelljs'),
     exec = require('child_process').exec,
+    fs = require('fs'),
     path = require('path'),
-    commandLineUtils = require('./HybridShared/node/commandLineUtils');
+    commandLineUtils = require('./HybridShared/node/commandLineUtils'),
+    miscUtils = require('./HybridShared/node/utils'),
+    cordovaHelper = require('./HybridShared/node/cordovaHelper');
+
+var minimumCordovaVersion = '3.5';
 
 var outputColors = {
     'red': '\x1b[31;1m',
@@ -21,42 +27,44 @@ var dependencyType = {
     'DIRCONTENTS': 3
 }
 
-var commandLineArgs = process.argv.slice(2, process.argv.length);
-var command = commandLineArgs.shift();
-if (typeof command !== 'string') {
-    usage();
-    process.exit(1);
-}
+// Calling main
+main(process.argv);
 
-var commandLineArgsMap;
-switch (command) {
+// 
+// Main function
+// 
+function main(args) {
+    var commandLineArgs = process.argv.slice(2, args.length);
+    var command = commandLineArgs.shift();
+
+    var processorList = null;
+    var commandHandler = null;
+
+    switch (command || '') {
     case 'version':
         console.log('forceios version ' + version);
+        process.exit(0);
         break;
     case 'create':
-        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
-            commandLineArgsMap = outputArgsMap;
-            createApp();
-        });
+        processorList = createArgProcessorList(); 
+        commandHandler = createApp;
         break;
     case 'update':
-        commandLineUtils.processArgsInteractive(commandLineArgs, createArgProcessorList(), function (outputArgsMap) {
-            commandLineArgsMap = outputArgsMap;
-            updateApp();
-        });
-        break;
-    case 'samples':
-        commandLineUtils.processArgsInteractive(commandLineArgs, samplesArgProcessorList(), function (outputArgsMap) {
-            commandLineArgsMap = outputArgsMap;
-            fetchSamples();
-        });
+        processorList = updateArgProcessorList();
+        commandHandler = updateApp;
         break;
     default:
-        console.log(outputColors.red + 'Unknown option: \'' + command + '\'.' + outputColors.reset);
         usage();
-        process.exit(2);
+        process.exit(1);
+    }
+
+    commandLineUtils.processArgsInteractive(commandLineArgs, processorList, commandHandler);
 }
 
+
+//
+// Usage
+//
 function usage() {
     console.log(outputColors.cyan + 'Usage:\n');
     console.log(outputColors.magenta + 'forceios create/update');
@@ -70,123 +78,118 @@ function usage() {
     console.log('    [--callbackuri=<Salesforce App Callback URL (The Callback URL for your app. Defaults to the sample app.)]');
     console.log(outputColors.cyan + '\n OR \n');
     console.log(outputColors.magenta + 'forceios version' + outputColors.reset);
-    console.log(outputColors.cyan + '\n OR \n');
-    console.log(outputColors.magenta + 'forceios samples');
-    console.log('    --outputDir=<Output directory to copy the samples into>' + outputColors.reset);
 }
 
-function fetchSamples() {
-    var srcDir;
-    createDirectory(commandLineArgsMap.outputdir, function(success, msg) {
-        if (!success) {
-            if (msg) {
-                console.log(msg);
-            }
-            process.exit(5);
-        }
-        copySampleApp('RestAPIExplorer', 'native', function(success, error) {
-            copySampleApp('NativeSqlAggregator', 'native', function(success, error) {
-                copySampleApp('FileExplorer', 'native', function(success, error) {
-                    copySampleApp('VFConnector', 'hybrid_remote', function(success, error) {
-                        copySampleApp('ContactExplorer', 'hybrid_local', function(success, error) {
-                            copySampleApp('SmartStoreExplorer', 'hybrid_local', function(success, error) {
-                                copySampleApp('AccountEditor', 'hybrid_local', function(success, error) {
-                                    copySampleApp('HybridFileExplorer', 'hybrid_local', function(success, error) {
-                                        if (success) {
-                                            console.log(outputColors.green + 'Sample apps copied successfully!' + outputColors.reset);
-                                        } else {
-                                            if (error) {
-                                                console.log(outputColors.red + msg + outputColors.reset);
-                                            }
-                                        }
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        });  
-    });
-}
-
-function copySampleApp(appName, appType, callback) {
-    commandLineArgsMap.appname = appName;
-    if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
-        srcDir = path.join(__dirname, 'Samples', 'hybrid', appName);
-    } else {
-        srcDir = path.join(__dirname, 'Samples', 'native', appName);
+//
+// Helper for 'create' command
+//
+function createApp(config) {
+    // Native app creation
+    if (config.apptype === 'native') {
+        createNativeApp(config);
     }
-    copyAppFolder(srcDir, function(success, msg) {
-        if (!success) {
-            return callback(false, msg);
-        }
-        createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'Dependencies'), function(success, error) {
-            if (error) {
-                console.log(outputColors.red + error + outputColors.reset);
-            }
-            if (appType === 'hybrid_local' || appType === 'hybrid_remote') {
-                createDirectory(path.join(commandLineArgsMap.outputdir, appName, appName, 'www'), function(success, error) {
-                    copyDependencies(appType, function(success, error) {
-                        console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
-                        return callback(success, error);
-                    });
-                });
-            } else {
-                copyDependencies(appType, function(success, error) {
-                    console.log(outputColors.green + 'Dependencies copied successfully!' + outputColors.reset);
-                    return callback(success, error);
-                });
-            }
-        });
-    });
+    // Hybrid app creation
+    else {
+        createHybridApp(config);
+    }
 }
 
-function createDirectory(dirName, callback) {
-    exec('mkdir "' + dirName + '"', function(error, stdout, stderr) {
-        if (error) {
-            return callback(false, 'Error creating directory \'' + dirName + '\'' + ': ' + error);
-        } else {
-            return callback(true, null);
-        }
-    });
-}
+//
+// Helper to create hybrid application
+//
+function createHybridApp(config) {
+    // console.log("Config:" + JSON.stringify(config, null, 2));
+    var outputDir = config.outputdir;
+    if (!outputDir) outputDir = process.cwd();
+    outputDir = path.resolve(outputDir);
+    var projectDir = path.join(outputDir, config.appname);
 
-function copyAppFolder(srcDir, callback) {
-    exec('cp -R "' + srcDir + '" "' + commandLineArgsMap.outputdir + '"', function(error, stdout, stderr) {
-        if (error) {
-            return callback(false, 'Error copying directory \'' + srcDir + '\' to \'' + commandLineArgsMap.outputdir + '\': ' + error);
-        } else {
-            return callback(true, null);
-        }
-    });
-}
-
-function createApp() {
-    var appType = commandLineArgsMap.apptype;
-    if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local') {
-        console.log(outputColors.red + 'Unrecognized app type: \'' + appType + '\'.' + outputColors.reset + 'App type must be native, hybrid_remote, or hybrid_local.');
-        usage();
-        process.exit(4);
+    // Make sure the Cordova CLI client exists.
+    var cordovaCliVersion = cordovaHelper.getCordovaCliVersion();
+    if (cordovaCliVersion === null) {
+        console.log('cordova command line tool could not be found.  Make sure you install the cordova CLI from https://www.npmjs.org/package/cordova.');
+        process.exit(11);
     }
 
-    var createAppExecutable = (appType === 'native' ?
-                                  path.join(__dirname, 'Templates', 'NativeAppTemplate', 'createApp.sh') :
-                                  path.join(__dirname, 'Templates', 'HybridAppTemplate', 'createApp.sh')
-                              );
+    var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaVersion);
+    var cordovaCliVersionNum = miscUtils.getVersionNumberFromString(cordovaCliVersion);
+    if (cordovaCliVersionNum < minimumCordovaVersionNum) {
+        console.log('Installed cordova command line tool version (' + cordovaCliVersion + ') is less than the minimum required version (' + minimumCordovaVersion + ').  Please update your version of Cordova.');
+        process.exit(12);
+    }
+
+    console.log('Using cordova CLI version ' + cordovaCliVersion + ' to create the hybrid app.');
+
+    shelljs.exec('cordova create ' + projectDir + ' ' + config.companyid + ' ' + config.appname);
+    shelljs.pushd(projectDir);
+    shelljs.exec('cordova platform add ios');
+    shelljs.exec('cordova plugin add https://github.com/forcedotcom/SalesforceMobileSDK-CordovaPlugin');
+
+    // Remove the default Cordova app.
+    shelljs.rm('-rf', path.join('www', '*'));
+
+    // Copy the sample app, if a local app was selected.
+    if (config.apptype === 'hybrid_local') {
+        var sampleAppFolder = path.join(__dirname, 'HybridShared', 'samples', 'userlist');
+        shelljs.cp('-R', path.join(sampleAppFolder, '*'), 'www');
+    }
+
+    // Add bootconfig.json
+    var bootconfig = {
+        "remoteAccessConsumerKey": config.appid || "3MVG9Iu66FKeHhINkB1l7xt7kR8czFcCTUhgoA8Ol2Ltf1eYHOU4SqQRSEitYFDUpqRWcoQ2.dBv_a1Dyu5xa",
+        "oauthRedirectURI": config.callbackuri || "testsfdc:///mobilesdk/detect/oauth/done",
+        "oauthScopes": ["web", "api"],
+        "isLocal": config.apptype === 'hybrid_local',
+        "startPage": config.startpage || 'index.html',
+        "errorPage": "error.html",
+        "shouldAuthenticate": true,
+        "attemptOfflineLoad": false
+    };
+    // console.log("Bootconfig:" + JSON.stringify(bootconfig, null, 2));
+
+    fs.writeFileSync(path.join('www', 'bootconfig.json'), JSON.stringify(bootconfig, null, 2));
+    shelljs.exec('cordova prepare ios');
+    shelljs.popd();
+
+    // Inform the user of next steps.
+    var nextStepsOutput =
+        ['',
+         outputColors.green + 'Your application project is ready in ' + projectDir + '.',
+         '',
+         outputColors.cyan + 'To build the new application, do the following:' + outputColors.reset,
+         '   - cd ' + projectDir,
+         '   - cordova build',
+         '',
+         outputColors.cyan + 'To run the application, start an emulator or plug in your device and run:' + outputColors.reset,
+         '   - cordova run',
+         '',
+         outputColors.cyan + 'To use your new application in XCode, do the following:' + outputColors.reset,
+         '   - open ' + projectDir + '/platforms/ios/' + config.appname + '.xcodeproj in XCode',
+         '   - build and run',
+         ''].join('\n');
+    console.log(nextStepsOutput);
+    console.log(outputColors.cyan + 'Before you ship, make sure to plug your OAuth Client ID,\nCallback URI, and OAuth Scopes into '
+        + outputColors.magenta + 'www/bootconfig.json' + outputColors.reset);
+}
+
+//
+// Helper to create native application
+//
+function createNativeApp(config) {
+    var createAppExecutable = path.join(__dirname, 'Templates', 'NativeAppTemplate', 'createApp.sh');
 
     // Calling out to the shell, so re-quote the command line arguments.
-    var newCommandLineArgs = buildArgsFromArgMap();
+    var newCommandLineArgs = buildArgsFromArgMap(config);
     var createAppProcess = exec(createAppExecutable + ' ' + newCommandLineArgs, function(error, stdout, stderr) {
         if (stdout) console.log(stdout);
         if (stderr) console.log(stderr);
         if (error) {
             console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
-            process.exit(5);
+            process.exit(3);
         }
 
         // Copy dependencies
-        copyDependencies(appType, function(success, msg) {
+        copyDependencies(config, function(success, msg) {
             if (success) {
                 if (msg) console.log(outputColors.green + msg + outputColors.reset);
                 console.log(outputColors.green + 'Congratulations!  You have successfully created your app.' + outputColors.reset);
@@ -198,8 +201,11 @@ function createApp() {
     });
 }
 
-function updateApp() {
-    var appType = commandLineArgsMap.apptype;
+//
+// Helper for 'update' command
+//
+function updateApp(config) {
+    var appType = config.apptype;
     if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local') {
         console.log(outputColors.red + 'Unrecognized app type: \'' + appType + '\'.' + outputColors.reset + 'App type must be native, hybrid_remote, or hybrid_local.');
         usage();
@@ -207,7 +213,7 @@ function updateApp() {
     }
 
     // Copy dependencies
-    copyDependencies(appType, function(success, msg) {
+    copyDependencies(config, function(success, msg) {
         if (success) {
             if (msg) console.log(outputColors.green + msg + outputColors.reset);
             console.log(outputColors.green + 'Congratulations!  You have successfully updated your app.' + outputColors.reset);
@@ -218,29 +224,31 @@ function updateApp() {
     });
 }
 
-function buildArgsFromArgMap() {
+function buildArgsFromArgMap(config) {
     var argLine = '';
-    argLine += ' -t "' + commandLineArgsMap.apptype + '"';
-    argLine += ' -n "' + commandLineArgsMap.appname + '"';
-    argLine += ' -c "' + commandLineArgsMap.companyid + '"';
-    argLine += ' -g "' + commandLineArgsMap.organization + '"';
-    if (commandLineArgsMap.outputdir)
-        argLine += ' -o "' + commandLineArgsMap.outputdir + '"';
-    if (commandLineArgsMap.appid)
-        argLine += ' -a "' + commandLineArgsMap.appid + '"';
-    if (commandLineArgsMap.callbackuri)
-        argLine += ' -u "' + commandLineArgsMap.callbackuri + '"';
-    if (commandLineArgsMap.startpage)
-        argLine += ' -s "' + commandLineArgsMap.startpage + '"';
+    argLine += ' -t "' + config.apptype + '"';
+    argLine += ' -n "' + config.appname + '"';
+    argLine += ' -c "' + config.companyid + '"';
+    argLine += ' -g "' + config.organization + '"';
+    if (config.outputdir)
+        argLine += ' -o "' + config.outputdir + '"';
+    if (config.appid)
+        argLine += ' -a "' + config.appid + '"';
+    if (config.callbackuri)
+        argLine += ' -u "' + config.callbackuri + '"';
+    if (config.startpage)
+        argLine += ' -s "' + config.startpage + '"';
 
     return argLine;
 }
 
-function copyDependencies(appType, callback) {
-    var outputDirMap = createOutputDirectoriesMap();
+function copyDependencies(config, callback) {
+    var appType = config.apptype;
+    var outputDirMap = createOutputDirectoriesMap(config);
     var dependencyPackages = createDependencyPackageMap(outputDirMap);
     var dependencies = [
         dependencyPackages.sdkresources,
+        dependencyPackages.sdkappsettingsbundle,
         dependencyPackages.commonutils,
         dependencyPackages.oauth,
         dependencyPackages.sdkcore,
@@ -248,41 +256,9 @@ function copyDependencies(appType, callback) {
         dependencyPackages.openssl,
         dependencyPackages.sqlcipher
     ];
-    switch (appType) {
-        case 'native':
-            dependencies.push(dependencyPackages.mkNetworkKit);
-            dependencies.push(dependencyPackages.salesforceNetworkSDK);
-            dependencies.push(dependencyPackages.nativesdk);
-            break;
-        case 'hybrid_local':
-            dependencies.push(dependencyPackages.cordovaJs);
-            dependencies.push(dependencyPackages.hybridForcePlugins);
-            dependencies.push(dependencyPackages.hybridForceTk);
-            dependencies.push(dependencyPackages.hybridSmartSync);
-            if (command === 'samples') {
-                if (commandLineArgsMap.appname === 'AccountEditor' || commandLineArgsMap.appname === 'HybridFileExplorer') {
-                    dependencies.push(dependencyPackages.hybridAppWww);
-                } else {
-                    dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
-                    dependencies.push(dependencyPackages.hybridSampleAppHtml);
-                    dependencies.push(dependencyPackages.hybridSampleAppJs);
-                }
-            } else {
-                dependencies.push(dependencyPackages.hybridSampleAppHtml);
-                dependencies.push(dependencyPackages.hybridSampleAppJs);
-            }
-            dependencies.push(dependencyPackages.jquery);
-            dependencies.push(dependencyPackages.backbone);
-        case 'hybrid_remote':
-            dependencies.push(dependencyPackages.cordovaBin);
-            dependencies.push(dependencyPackages.cordovaConfig);
-            dependencies.push(dependencyPackages.cordovaCaptureBundle);
-            dependencies.push(dependencyPackages.hybridsdk);
-            if (command === 'samples' && commandLineArgsMap.appname === 'VFConnector') {
-                dependencies.push(dependencyPackages.hybridSampleAppBootConfig);
-            }
-            break;
-    }
+    dependencies.push(dependencyPackages.mkNetworkKit);
+    dependencies.push(dependencyPackages.salesforceNetworkSDK);
+    dependencies.push(dependencyPackages.nativesdk);
 
     console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
     copyDependenciesHelper(dependencies, callback);
@@ -346,94 +322,23 @@ function copyDependenciesHelper(dependencies, callback) {
     }
 }
 
-function createOutputDirectoriesMap() {
+function createOutputDirectoriesMap(config) {
     var outputDirMap = {};
 
     // NB: Arguments should have already been verified at this point.
-    var appName = commandLineArgsMap.appname;
-    var outputDir = commandLineArgsMap.outputdir;
+    var appName = config.appname;
+    var outputDir = config.outputdir;
     if (!outputDir) outputDir = process.cwd();
     outputDir = path.resolve(outputDir);
     outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
     outputDirMap.appDependenciesDir = path.join(outputDirMap.appBaseContentDir, 'Dependencies');
-    outputDirMap.hybridAppWwwDir = path.join(outputDirMap.appBaseContentDir, 'www');
-    if (command == 'update') {
-        outputDirMap.hybridAppWwwDir += ('_' + version);
-        exec('mkdir "' + outputDirMap.hybridAppWwwDir + '"', function(error, stdout, stderr) {
-            if (error) {
-                console.log('Error creating directory: ' + outputDirMap.hybridAppWwwDir);
-                process.exit(5);
-            }
-        });
-    }
-
     return outputDirMap;
 }
 
 function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.cordovaBin = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'Cordova', 'Cordova-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'Cordova-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'Cordova') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'Cordova'));
-                        process.exit(5);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.cordovaConfig = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'config.xml'), outputDirMap.appBaseContentDir, dependencyType.FILE);
-    packageMap.cordovaJs = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'cordova-2.3.0.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.cordovaCaptureBundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Cordova', 'Capture.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.hybridForcePlugins = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'cordova.force.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridForceTk = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'forcetk.mobilesdk.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.hybridSmartSync = makePackageObj(path.join(__dirname, 'HybridShared', 'libs', 'smartsync.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    packageMap.jquery = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'jquery'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
-    packageMap.backbone = makePackageObj(path.join(__dirname, 'HybridShared', 'external', 'backbone'), outputDirMap.hybridAppWwwDir, dependencyType.DIR);
-    if (command === 'samples') {
-        if (commandLineArgsMap.appname === 'ContactExplorer') {
-            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        } else if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
-            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        } else if (commandLineArgsMap.appname === 'VFConnector') {
-            packageMap.hybridSampleAppBootConfig = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'vfconnector', 'bootconfig.json'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        }
-        if (commandLineArgsMap.appname === 'SmartStoreExplorer') {
-            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartstoreexplorer', 'smartstoreexplorer.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        } else if (commandLineArgsMap.appname === 'AccountEditor') {
-            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'smartsync'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
-        } else if (commandLineArgsMap.appname === 'HybridFileExplorer') {
-            packageMap.hybridAppWww = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'fileexplorer'), outputDirMap.hybridAppWwwDir, dependencyType.DIRCONTENTS);
-        } else {
-            packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-            packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        }
-    } else {
-        packageMap.hybridSampleAppHtml = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'index.html'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-        packageMap.hybridSampleAppJs = makePackageObj(path.join(__dirname, 'HybridShared', 'SampleApps', 'contactexplorer', 'inline.js'), outputDirMap.hybridAppWwwDir, dependencyType.FILE);
-    }
-    packageMap.hybridsdk = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceHybridSDK-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceHybridSDK'));
-                        process.exit(5);
-                    }
-                }
-            );
-        }
-    );
+    packageMap.sdkappsettingsbundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Settings.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.nativesdk = makePackageObj(
         path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'),
         outputDirMap.appDependenciesDir,
@@ -458,7 +363,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth'));
-                        process.exit(5);
+                        process.exit(6);
                     }
                 }
             );
@@ -473,7 +378,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore'));
-                        process.exit(5);
+                        process.exit(7);
                     }
                 }
             );
@@ -488,7 +393,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity'));
-                        process.exit(5);
+                        process.exit(8);
                     }
                 }
             );
@@ -503,7 +408,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS'));
-                        process.exit(5);
+                        process.exit(9);
                     }
                 }
             );
@@ -518,7 +423,7 @@ function createDependencyPackageMap(outputDirMap) {
                 function(error, stdout, stderr) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK'));
-                        process.exit(5);
+                        process.exit(10);
                     }
                 }
             );
@@ -538,106 +443,78 @@ function makePackageObj(srcPath, destPath, dependencyType, postProcessingAction)
 // Input argument validation / processing.
 // -----
 
-function createArgProcessorList() {
+function updateArgProcessorList() {
     var argProcessorList = new commandLineUtils.ArgProcessorList();
 
     // App type
-    argProcessorList.addArgProcessor('apptype', 'Enter your application type (native, hybrid_remote, or hybrid_local):', function(appType) {
-        appType = appType.trim();
-        if (appType !== 'native' && appType !== 'hybrid_remote' && appType !== 'hybrid_local')
-            return new commandLineUtils.ArgProcessorOutput(false, 'App type must be native, hybrid_remote, or hybrid_local.');
-
-        return new commandLineUtils.ArgProcessorOutput(true, appType);
-    });
+    addProcessorFor(argProcessorList, 'apptype', 'Enter your application type (native, hybrid_remote, or hybrid_local):', 'App type must be native, hybrid_remote, or hybrid_local.', 
+                    function(val) { return ['native', 'hybrid_remote', 'hybrid_local'].indexOf(val) >= 0; });
 
     // App name
-    argProcessorList.addArgProcessor('appname', 'Enter your application name:', function(appName) {
-        if (appName.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for app name: \'' + appName + '\'');
+    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /\S+/);
 
-        return new commandLineUtils.ArgProcessorOutput(true, appName.trim());
-    });
 
     // Output dir
-    argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for your app (defaults to the current directory):', function(outputDir) {
-        if (outputDir.trim() === '')
-            // Just unset the value.  The underlying script will take care of the default.
-            return new commandLineUtils.ArgProcessorOutput(true, undefined);
+    addProcessorForOptional(argProcessorList, 'outputdir', 'Enter the output directory for your app (defaults to the current directory):');
+    return argProcessorList;
+}
 
-        return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
-    });
+function createArgProcessorList() {
+    
+    var argProcessorList = updateArgProcessorList();
 
-    // Additional arguments for the create
-    if (command == 'create') {
-        // Company Identifier
-        argProcessorList.addArgProcessor('companyid', 'Enter your company identifier (com.mycompany):', function(companyId) {
-            if (companyId.trim() === '')
-                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for company identifier: \'' + companyId + '\'');
+    // Company Identifier
+    addProcessorFor(argProcessorList, 'companyid', 'Enter the package name for your app (com.mycompany.my_app):', 'Invalid value for company identifier: \'$val\'', /^[a-z]+[a-z0-9_]*(\.[a-z]+[a-z0-9_]*)*$/);
 
-            // TODO: Update the company ID format as necessary.
-            return new commandLineUtils.ArgProcessorOutput(true, companyId.trim());
-        });
+    // Organization
+    addProcessorFor(argProcessorList, 'organization', 'Enter your organization name (Acme, Inc.):', 'Invalid value for organization: \'$val\'.',  /\S+/);
 
-        // Organization
-        argProcessorList.addArgProcessor('organization', 'Enter your organization name (Acme, Inc.):', function(org) {
-            if (org.trim() === '')
-                return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for organization: \'' + org + '\'');
+    // Start page
+    addProcessorFor(argProcessorList, 'startpage', 'Enter the start page for your app (only applicable for hybrid_remote apps):', 'Invalid value for start page: \'$val\'.', /\S+/, 
+                    function(argsMap) { return (argsMap['apptype'] === 'hybrid_remote'); });
 
-            return new commandLineUtils.ArgProcessorOutput(true, org.trim());
-        });
+    // Connected App ID
+    addProcessorForOptional(argProcessorList, 'appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):');
 
-        // Start page
-        argProcessorList.addArgProcessor(
-            'startpage',
-            'Enter the start page for your app (only applicable for hybrid_remote apps):',
-            function(startPage, argsMap) {
-                if (argsMap && argsMap.apptype === 'hybrid_remote') {
-                    if (startPage.trim() === '')
-                        return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for start page: \'' + startPage + '\'');
-
-                    return new commandLineUtils.ArgProcessorOutput(true, startPage.trim());
-                }
-
-                // Unset any value here, as it doesn't apply for non-remote apps.
-                return new commandLineUtils.ArgProcessorOutput(true, undefined);
-            },
-            function (argsMap) {
-                return (argsMap['apptype'] === 'hybrid_remote');
-            }
-        );
-
-        // Connected App ID
-        argProcessorList.addArgProcessor('appid', 'Enter your Connected App ID (defaults to the sample app\'s ID):', function(appId) {
-            if (appId.trim() === '')
-                // Just unset the value.  The underlying script will take care of the default.
-                return new commandLineUtils.ArgProcessorOutput(true, undefined);
-
-            return new commandLineUtils.ArgProcessorOutput(true, appId.trim());
-        });
-
-        // Connected App Callback URI
-        argProcessorList.addArgProcessor('callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):', function(callbackUri) {
-            if (callbackUri.trim() === '')
-                // Just unset the value.  The underlying script will take care of the default.
-                return new commandLineUtils.ArgProcessorOutput(true, undefined);
-
-            return new commandLineUtils.ArgProcessorOutput(true, callbackUri.trim());
-        });
-    }
+    // Connected App Callback URI
+    addProcessorForOptional(argProcessorList, 'callbackuri', 'Enter your Connected App Callback URI (defaults to the sample app\'s URI):');
 
     return argProcessorList;
 }
 
-function samplesArgProcessorList() {
-    var argProcessorList = new commandLineUtils.ArgProcessorList();
+//
+// Helper function to add arg processor
+// * argProcessorList: ArgProcessorList
+// * argName: string, name of argument
+// * prompt: string for prompt
+// * error: string for error (can contain $val to print the value typed by the user in the error message)
+// * validation: function or regexp or null (no validation)
+// * preprocessor: function or null
+// * postprocessor: function or null
+// 
+function addProcessorFor(argProcessorList, argName, prompt, error, validation, preprocessor, postprocessor) {
+   argProcessorList.addArgProcessor(argName, prompt, function(val) {
+       val = val.trim();
 
-    // Output dir
-    argProcessorList.addArgProcessor('outputdir', 'Enter the output directory for the samples:', function(outputDir) {
-        if (outputDir.trim() === '')
-            return new commandLineUtils.ArgProcessorOutput(false, 'Invalid value for output dir: \'' + outputDir + '\'');
+       // validation is either a function or a regexp
+       if (typeof validation === 'function' && validation(val)
+           || typeof validation === 'object' && typeof validation.test === 'function' && validation.test(val))
+       {
+           return new commandLineUtils.ArgProcessorOutput(true, typeof postprocessor === 'function' ? postprocessor(val) : val);
+       }
+       else {
+           return new commandLineUtils.ArgProcessorOutput(false, error.replace('$val', val));
+       }
 
-        return new commandLineUtils.ArgProcessorOutput(true, outputDir.trim());
-    });
+   }, preprocessor);
+}
 
-    return argProcessorList;
+//
+// Helper function to add arg processor for optional arg- should unset value when nothing is typed in
+// * argProcessorList: ArgProcessorList
+// * argName: string, name of argument
+// * prompt: string for prompt
+//
+function addProcessorForOptional(argProcessorList, argName, prompt) {
+    addProcessorFor(argProcessorList, argName, prompt, undefined, function() { return true;}, undefined, undefined);
 }
