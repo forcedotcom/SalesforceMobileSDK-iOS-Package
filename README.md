@@ -42,11 +42,6 @@ Typing `forceios` with no arguments gives you a breakdown of the usage:
 
         forceios version
 
-        OR 
-
-        forceios samples
-            --outputDir=<Output directory to copy the samples into>
-
 **Note:** You can specify any or all of the arguments as command line options as specified in the usage.  If you run `forceios create` with missing arguments, it prompts you for each missing option interactively.
 
 Once the creation script completes, you'll have a fully functioning basic application of the type you specified.  The new application is an Xcode project that you can peruse, run, and debug.
@@ -72,10 +67,6 @@ Once the creation script completes, you'll have a fully functioning basic applic
 **App ID:** \( *optional* \) The Connected App Consumer Key that identifies your app in the cloud.  This argument defaults to a sample key to allow you to test your app.  However, **you _must_ specify your own Consumer Key before you submit your app to the App Store**.
 
 **Callback URI:** \( *optional* \) The Callback URL associated with your Connected App.  As with the App ID, this argument defaults to a value for a sample app.  **You _must_ specify your own Callback URL before you submit your app to the App Store**.
-
-### forceios samples options
-
-**Output Directory:** The output directory where you want the samples to be copied.
 
 ## More information
 
