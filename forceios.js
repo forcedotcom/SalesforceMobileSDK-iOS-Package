@@ -451,7 +451,7 @@ function updateArgProcessorList() {
                     function(val) { return ['native', 'hybrid_remote', 'hybrid_local'].indexOf(val) >= 0; });
 
     // App name
-    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /\S+/);
+    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /^\S+$/);
 
 
     // Output dir
