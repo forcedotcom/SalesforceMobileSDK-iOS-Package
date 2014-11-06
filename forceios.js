@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '3.0.0',
+var version = '2.3.1',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -123,7 +123,7 @@ function createHybridApp(config) {
     shelljs.exec('cordova create ' + projectDir + ' ' + config.companyid + ' ' + config.appname);
     shelljs.pushd(projectDir);
     shelljs.exec('cordova platform add ios');
-    shelljs.exec('cordova plugin add https://github.com/khawkins/SalesforceMobileSDK-CordovaPlugin#volatile_unstable');
+    shelljs.exec('cordova plugin add https://github.com/forcedotcom/SalesforceMobileSDK-CordovaPlugin');
 
     // Remove the default Cordova app.
     shelljs.rm('-rf', path.join('www', '*'));
@@ -254,11 +254,12 @@ function copyDependencies(config, callback) {
         dependencyPackages.sdkcore,
         dependencyPackages.securityLib,
         dependencyPackages.openssl,
-        dependencyPackages.sqlcipher
+        dependencyPackages.sqlcipher,
+        dependencyPackages.mkNetworkKit,
+        dependencyPackages.salesforceNetworkSDK,
+        dependencyPackages.restapi,
+        dependencyPackages.smartsync
     ];
-    dependencies.push(dependencyPackages.mkNetworkKit);
-    dependencies.push(dependencyPackages.salesforceNetworkSDK);
-    dependencies.push(dependencyPackages.nativesdk);
 
     console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
     copyDependenciesHelper(dependencies, callback);
@@ -339,15 +340,30 @@ function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.sdkappsettingsbundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Settings.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.nativesdk = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'),
+    packageMap.restapi = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceRestAPI-Release.zip'),
         outputDirMap.appDependenciesDir,
         dependencyType.ARCHIVE,
         function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK') + '"',
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI') + '"',
                 function(error, stdout, stderr) {
                     if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK'));
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.smartsync = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SmartSync-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SmartSync'));
                         process.exit(5);
                     }
                 }
@@ -451,7 +467,7 @@ function updateArgProcessorList() {
                     function(val) { return ['native', 'hybrid_remote', 'hybrid_local'].indexOf(val) >= 0; });
 
     // App name
-    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /^\S+$/);
+    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /\S+/);
 
 
     // Output dir
