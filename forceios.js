@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '2.3.1',
+var version = '3.0.0',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -467,8 +467,7 @@ function updateArgProcessorList() {
                     function(val) { return ['native', 'hybrid_remote', 'hybrid_local'].indexOf(val) >= 0; });
 
     // App name
-    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /\S+/);
-
+    addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /^\S+$/);
 
     // Output dir
     addProcessorForOptional(argProcessorList, 'outputdir', 'Enter the output directory for your app (defaults to the current directory):');
