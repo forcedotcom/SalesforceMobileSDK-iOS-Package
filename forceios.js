@@ -254,11 +254,12 @@ function copyDependencies(config, callback) {
         dependencyPackages.sdkcore,
         dependencyPackages.securityLib,
         dependencyPackages.openssl,
-        dependencyPackages.sqlcipher
+        dependencyPackages.sqlcipher,
+        dependencyPackages.mkNetworkKit,
+        dependencyPackages.salesforceNetworkSDK,
+        dependencyPackages.restapi,
+        dependencyPackages.smartsync
     ];
-    dependencies.push(dependencyPackages.mkNetworkKit);
-    dependencies.push(dependencyPackages.salesforceNetworkSDK);
-    dependencies.push(dependencyPackages.nativesdk);
 
     console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
     copyDependenciesHelper(dependencies, callback);
@@ -339,15 +340,30 @@ function createDependencyPackageMap(outputDirMap) {
     var packageMap = {};
     packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
     packageMap.sdkappsettingsbundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Settings.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.nativesdk = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceNativeSDK-Release.zip'),
+    packageMap.restapi = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceRestAPI-Release.zip'),
         outputDirMap.appDependenciesDir,
         dependencyType.ARCHIVE,
         function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK') + '"',
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI') + '"',
                 function(error, stdout, stderr) {
                     if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNativeSDK'));
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI'));
+                        process.exit(5);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.smartsync = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SmartSync-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SmartSync'));
                         process.exit(5);
                     }
                 }
@@ -452,7 +468,6 @@ function updateArgProcessorList() {
 
     // App name
     addProcessorFor(argProcessorList, 'appname', 'Enter your application name:', 'Invalid value for application name: \'$val\'.', /^\S+$/);
-
 
     // Output dir
     addProcessorForOptional(argProcessorList, 'outputdir', 'Enter the output directory for your app (defaults to the current directory):');
