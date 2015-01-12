@@ -120,7 +120,7 @@ function createHybridApp(config) {
 
     console.log('Using cordova CLI version ' + cordovaCliVersion + ' to create the hybrid app.');
 
-    shelljs.exec('cordova create ' + projectDir + ' ' + config.companyid + ' ' + config.appname);
+    shelljs.exec('cordova create "' + projectDir + '" ' + config.companyid + ' ' + config.appname);
     shelljs.pushd(projectDir);
     shelljs.exec('cordova platform add ios');
     shelljs.exec('cordova plugin add https://github.com/khawkins/SalesforceMobileSDK-CordovaPlugin#volatile_unstable');
