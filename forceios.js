@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '3.0.0',
+var version = '3.1.0',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -253,6 +253,7 @@ function copyDependencies(config, callback) {
         dependencyPackages.oauth,
         dependencyPackages.sdkcore,
         dependencyPackages.securityLib,
+        dependencyPackages.sdkcommon,
         dependencyPackages.openssl,
         dependencyPackages.sqlcipher,
         dependencyPackages.mkNetworkKit,
@@ -410,6 +411,21 @@ function createDependencyPackageMap(outputDirMap) {
                     if (error) {
                         console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity'));
                         process.exit(8);
+                    }
+                }
+            );
+        }
+    );
+    packageMap.sdkcommon = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceSDKCommon-Release.zip'),
+        outputDirMap.appDependenciesDir,
+        dependencyType.ARCHIVE,
+        function() {
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon') + '"',
+                function(error, stdout, stderr) {
+                    if (error) {
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon'));
+                        process.exit(13);
                     }
                 }
             );
