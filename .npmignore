@@ -1,8 +1,7 @@
 Dependencies/Cordova/Cordova-Debug.zip
-Dependencies/MKNetworkKit-iOS-Debug.zip
 Dependencies/SalesforceHybridSDK-Debug.zip
 Dependencies/SalesforceNativeSDK-Debug.zip
-Dependencies/SalesforceNetworkSDK-Debug.zip
+Dependencies/SalesforceNetwork-Debug.zip
 Dependencies/SalesforceOAuth-Debug.zip
 Dependencies/SalesforceSDKCore-Debug.zip
 Dependencies/SalesforceSecurity-Debug.zip
