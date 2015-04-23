@@ -256,8 +256,7 @@ function copyDependencies(config, callback) {
         dependencyPackages.sdkcommon,
         dependencyPackages.openssl,
         dependencyPackages.sqlcipher,
-        dependencyPackages.mkNetworkKit,
-        dependencyPackages.salesforceNetworkSDK,
+        dependencyPackages.salesforceNetwork,
         dependencyPackages.restapi,
         dependencyPackages.smartsync
     ];
@@ -431,30 +430,15 @@ function createDependencyPackageMap(outputDirMap) {
             );
         }
     );
-    packageMap.mkNetworkKit = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'MKNetworkKit-iOS-Release.zip'),
+    packageMap.salesforceNetwork = makePackageObj(
+        path.join(__dirname, 'Dependencies', 'SalesforceNetwork-Release.zip'),
         outputDirMap.appDependenciesDir,
         dependencyType.ARCHIVE,
         function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS') + '"',
+            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork') + '"',
                 function(error, stdout, stderr) {
                     if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'MKNetworkKit-iOS'));
-                        process.exit(9);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.salesforceNetworkSDK = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceNetworkSDK-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetworkSDK'));
+                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork'));
                         process.exit(10);
                     }
                 }
