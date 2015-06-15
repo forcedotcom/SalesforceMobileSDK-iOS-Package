@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '3.2.1',
+var version = '3.2.2',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -10,6 +10,8 @@ var version = '3.2.1',
     cordovaHelper = require('./HybridShared/node/cordovaHelper');
 
 var minimumCordovaVersion = '3.5';
+
+var cordovaPlatformVersion = '3.6.3';
 
 var outputColors = {
     'red': '\x1b[31;1m',
@@ -122,7 +124,7 @@ function createHybridApp(config) {
 
     shelljs.exec('cordova create "' + projectDir + '" ' + config.companyid + ' ' + config.appname);
     shelljs.pushd(projectDir);
-    shelljs.exec('cordova platform add ios');
+    shelljs.exec('cordova platform add ios@' + cordovaPlatformVersion);
     shelljs.exec('cordova plugin add https://github.com/forcedotcom/SalesforceMobileSDK-CordovaPlugin');
 
     // Remove the default Cordova app.
