@@ -11,6 +11,8 @@ var version = '3.3.0',
 
 var minimumCordovaVersion = '3.5';
 
+var cordovaPlatformVersion = '3.6.3';
+
 var outputColors = {
     'red': '\x1b[31;1m',
     'green': '\x1b[32;1m',
@@ -122,8 +124,8 @@ function createHybridApp(config) {
 
     shelljs.exec('cordova create "' + projectDir + '" ' + config.companyid + ' ' + config.appname);
     shelljs.pushd(projectDir);
-    shelljs.exec('cordova platform add ios');
-    shelljs.exec('cordova plugin add https://github.com/khawkins/SalesforceMobileSDK-CordovaPlugin#volatile_unstable');
+    shelljs.exec('cordova platform add ios@' + cordovaPlatformVersion);
+    shelljs.exec('cordova plugin add https://github.com/forcedotcom/SalesforceMobileSDK-CordovaPlugin#unstable');
 
     // Remove the default Cordova app.
     shelljs.rm('-rf', path.join('www', '*'));
