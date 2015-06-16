@@ -9,7 +9,7 @@ var version = '3.2.2',
     miscUtils = require('./HybridShared/node/utils'),
     cordovaHelper = require('./HybridShared/node/cordovaHelper');
 
-var minimumCordovaVersion = '3.5';
+var minimumCordovaCliVersion = '3.5';
 
 var cordovaPlatformVersion = '3.6.3';
 
@@ -113,10 +113,10 @@ function createHybridApp(config) {
         process.exit(11);
     }
 
-    var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaVersion);
+    var minimumCordovaVersionNum = miscUtils.getVersionNumberFromString(minimumCordovaCliVersion);
     var cordovaCliVersionNum = miscUtils.getVersionNumberFromString(cordovaCliVersion);
     if (cordovaCliVersionNum < minimumCordovaVersionNum) {
-        console.log('Installed cordova command line tool version (' + cordovaCliVersion + ') is less than the minimum required version (' + minimumCordovaVersion + ').  Please update your version of Cordova.');
+        console.log('Installed cordova command line tool version (' + cordovaCliVersion + ') is less than the minimum required version (' + minimumCordovaCliVersion + ').  Please update your version of Cordova.');
         process.exit(12);
     }
 
