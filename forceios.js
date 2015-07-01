@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var version = '3.2.2',
+var version = '3.3.0',
     shelljs = require('shelljs'),
     exec = require('child_process').exec,
     fs = require('fs'),
@@ -256,7 +256,6 @@ function copyDependencies(config, callback) {
         dependencyPackages.sdkcore,
         dependencyPackages.securityLib,
         dependencyPackages.sdkcommon,
-        dependencyPackages.openssl,
         dependencyPackages.sqlcipher,
         dependencyPackages.salesforceNetwork,
         dependencyPackages.restapi,
@@ -448,7 +447,6 @@ function createDependencyPackageMap(outputDirMap) {
         }
     );
     packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
-    packageMap.openssl = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'openssl'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
     return packageMap;
 }
