@@ -189,17 +189,6 @@ function createNativeApp(config) {
             console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
             process.exit(3);
         }
-
-        // Copy dependencies
-        copyDependencies(config, function(success, msg) {
-            if (success) {
-                if (msg) console.log(outputColors.green + msg + outputColors.reset);
-                console.log(outputColors.green + 'Congratulations!  You have successfully created your app.' + outputColors.reset);
-            } else {
-                if (msg) console.log(outputColors.red + msg + outputColors.reset);
-                console.log(outputColors.red + 'There was an error creating the app.' + outputColors.reset);
-            }
-        });
     });
 }
 
@@ -214,6 +203,11 @@ function updateApp(config) {
         process.exit(4);
     }
 
+    //
+    // FIXME
+    // 
+
+    /*
     // Copy dependencies
     copyDependencies(config, function(success, msg) {
         if (success) {
@@ -224,6 +218,7 @@ function updateApp(config) {
             console.log(outputColors.red + 'There was an error updating the app.' + outputColors.reset);
         }
     });
+    */
 }
 
 function buildArgsFromArgMap(config) {
@@ -244,216 +239,6 @@ function buildArgsFromArgMap(config) {
     return argLine;
 }
 
-function copyDependencies(config, callback) {
-    var appType = config.apptype;
-    var outputDirMap = createOutputDirectoriesMap(config);
-    var dependencyPackages = createDependencyPackageMap(outputDirMap);
-    var dependencies = [
-        dependencyPackages.sdkresources,
-        dependencyPackages.sdkappsettingsbundle,
-        dependencyPackages.commonutils,
-        dependencyPackages.oauth,
-        dependencyPackages.sdkcore,
-        dependencyPackages.securityLib,
-        dependencyPackages.sdkcommon,
-        dependencyPackages.sqlcipher,
-        dependencyPackages.salesforceNetwork,
-        dependencyPackages.restapi,
-        dependencyPackages.smartsync
-    ];
-
-    console.log(outputColors.cyan + 'Staging app dependencies...' + outputColors.reset);
-    copyDependenciesHelper(dependencies, callback);
-}
-
-function copyDependenciesHelper(dependencies, callback) {
-    if (dependencies.length === 0) {
-        return callback(true, null);
-    }
-
-    var dependencyObj = dependencies.shift();
-    switch (dependencyObj.dependencyType) {
-        case dependencyType.ARCHIVE:
-            // Zip archive.  Uncompress to the app's dependencies directory.
-            console.log(outputColors.yellow + 'Uncompressing ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('unzip -o "' + dependencyObj.srcPath + '" -d "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
-                if (error) {
-                    return callback(false, 'There was an error uncompressing the archive \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
-                } else if (dependencyObj.postProcessingAction) {
-                    dependencyObj.postProcessingAction();
-                }
-                copyDependenciesHelper(dependencies, callback);
-            });
-            break;
-        case dependencyType.DIR:
-            // Simple folder.  Recursive copy to the app's dependencies directory.
-            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('cp -R "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
-                if (error) {
-                    return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
-                } else if (dependencyObj.postProcessingAction) {
-                    dependencyObj.postProcessingAction();
-                }
-                copyDependenciesHelper(dependencies, callback);
-            });
-            break;
-        case dependencyType.FILE:
-            // Simple file(s).  Copy to the app's dependencies directory.
-            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('cp "' + dependencyObj.srcPath + '" "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
-                if (error) {
-                    return callback(false, 'Error copying file(s) \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
-                } else if (dependencyObj.postProcessingAction) {
-                    dependencyObj.postProcessingAction();
-                }
-                copyDependenciesHelper(dependencies, callback);
-            });
-            break;
-        case dependencyType.DIRCONTENTS:
-            // Recursive copy to the contents of the directory.
-            console.log(outputColors.yellow + 'Copying ' + path.basename(dependencyObj.srcPath) + ' to ' + dependencyObj.destPath + outputColors.reset);
-            exec('cp -rf "' + dependencyObj.srcPath + '"/ "' + dependencyObj.destPath + '"', function(error, stdout, stderr) {
-                if (error) {
-                    return callback(false, 'Error copying directory \'' + dependencyObj.srcPath + '\' to \'' + dependencyObj.destPath + '\': ' + error);
-                } else if (dependencyObj.postProcessingAction) {
-                    dependencyObj.postProcessingAction();
-                }
-                copyDependenciesHelper(dependencies, callback);
-            });
-            break;
-    }
-}
-
-function createOutputDirectoriesMap(config) {
-    var outputDirMap = {};
-
-    // NB: Arguments should have already been verified at this point.
-    var appName = config.appname;
-    var outputDir = config.outputdir;
-    if (!outputDir) outputDir = process.cwd();
-    outputDir = path.resolve(outputDir);
-    outputDirMap.appBaseContentDir = path.join(outputDir, appName, appName);
-    outputDirMap.appDependenciesDir = path.join(outputDirMap.appBaseContentDir, 'Dependencies');
-    return outputDirMap;
-}
-
-function createDependencyPackageMap(outputDirMap) {
-    var packageMap = {};
-    packageMap.sdkresources = makePackageObj(path.join(__dirname, 'Dependencies', 'SalesforceSDKResources.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.sdkappsettingsbundle = makePackageObj(path.join(__dirname, 'Dependencies', 'Settings.bundle'), outputDirMap.appBaseContentDir, dependencyType.DIR);
-    packageMap.restapi = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceRestAPI-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceRestAPI'));
-                        process.exit(5);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.smartsync = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SmartSync-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SmartSync') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SmartSync'));
-                        process.exit(5);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.oauth = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceOAuth-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceOAuth'));
-                        process.exit(6);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.sdkcore = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceSDKCore-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCore'));
-                        process.exit(7);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.securityLib = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceSecurity-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSecurity'));
-                        process.exit(8);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.sdkcommon = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceSDKCommon-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceSDKCommon'));
-                        process.exit(13);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.salesforceNetwork = makePackageObj(
-        path.join(__dirname, 'Dependencies', 'SalesforceNetwork-Release.zip'),
-        outputDirMap.appDependenciesDir,
-        dependencyType.ARCHIVE,
-        function() {
-            exec('mv "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork-Release') + '" "' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork') + '"',
-                function(error, stdout, stderr) {
-                    if (error) {
-                        console.log('Error creating directory: ' + path.join(outputDirMap.appDependenciesDir, 'SalesforceNetwork'));
-                        process.exit(10);
-                    }
-                }
-            );
-        }
-    );
-    packageMap.commonutils = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'SalesforceCommonUtils'), outputDirMap.appDependenciesDir, dependencyType.DIR);
-    packageMap.sqlcipher = makePackageObj(path.join(__dirname, 'Dependencies', 'ThirdParty', 'sqlcipher'), outputDirMap.appDependenciesDir, dependencyType.DIR);
-    return packageMap;
-}
-
-function makePackageObj(srcPath, destPath, dependencyType, postProcessingAction) {
-    return { 'srcPath': srcPath, 'destPath': destPath, 'dependencyType': dependencyType, 'postProcessingAction': postProcessingAction };
-}
 
 // -----
 // Input argument validation / processing.
