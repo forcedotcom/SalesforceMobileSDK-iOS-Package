@@ -1,3 +1,5 @@
+# {DEPRECATED}
+
 # Salesforce Mobile SDK for iOS Package
 
 The **forceios** npm package allows users to create iOS mobile applications to interface with the [Salesforce Platform](http://www.salesforce.com/platform/overview/), leveraging the [Salesforce Mobile SDK for iOS](https://github.com/forcedotcom/SalesforceMobileSDK-iOS).
