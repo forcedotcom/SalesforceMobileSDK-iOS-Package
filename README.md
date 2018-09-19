@@ -1,4 +1,4 @@
-# {DEPRECATED}
+# {DEPRECATED} Please use [this repository](https://github.com/forcedotcom/SalesforceMobileSDK-Package) instead.
 
 # Salesforce Mobile SDK for iOS Package
 
